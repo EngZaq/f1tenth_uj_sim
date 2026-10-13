@@ -1,0 +1,10 @@
+repositories:
+  f1tenth_gym_ros:
+    type: git
+    url: https://github.com/f1tenth/f1tenth_gym_ros.git
+    version: dev-humble
+
+  f1tenth_gym:
+    type: git
+    url: https://github.com/f1tenth/f1tenth_gym.git
+    version: dev-humble
