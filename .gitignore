@@ -14,3 +14,4 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+src/f1tenth_gym_ros/
