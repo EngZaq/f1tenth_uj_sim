@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'path_publisher = f1tenth_control.path_publisher:main',
             'pure_pursuit = f1tenth_control.pure_pursuit:main',
+            'racing_pure_pursuit = f1tenth_control.racing_pure_pursuit:main',
         ],
     },
 )
