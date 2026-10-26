@@ -1,0 +1,117 @@
+diff --git a/config/sim.yaml b/config/sim.yaml
+index d90c149..f3378c1 100644
+--- a/config/sim.yaml
++++ b/config/sim.yaml
+@@ -36,11 +36,11 @@ bridge:
+ 
+     # LiDAR related parameters
+     lidar_enabled: True
+-    lidar_base_link_to_lidar_tf: [0.275, 0.0, 0.0] # x, y, yaw from base_link to lidar
++    lidar_base_link_to_lidar_tf: [0.10, 0.0, 0.0] # x, y, yaw from base_link to lidar
+     lidar_noise_std: 0.01 # LiDAR accuracy - modelled as zero-mean Gaussian noise with this standard deviation (in meters)
+     
+     # laserscan parameters (default values are SICK TIM571 configuration (270° FOV))
+-    scan_num_beams: 819 # Number of laser beams in LiDAR scan (resolution = (scan_angle_max - scan_angle_min) / scan_num_beams)
++    scan_num_beams: 1081 # Number of laser beams in LiDAR scan (resolution = (scan_angle_max - scan_angle_min) / scan_num_beams)
+     scan_range_min: 0.05 # 5cm
+     scan_range_max: 25.0 # 25m
+     # Angles have to be in degrees
+@@ -48,7 +48,7 @@ bridge:
+     scan_angle_max: 135.0 # 135°
+ 
+     # map parameters
+-    map_path: 'maps/levine'
++    map_path: 'maps/uj_technical_loop_v1'
+     map_img_ext: '.png'
+ 
+     # car parameters and scale
+@@ -63,9 +63,9 @@ bridge:
+     num_agent: 1
+ 
+     # ego starting pose on map
+-    sx: -12.0
+-    sy: 0.0
+-    stheta: 0.0
++    sx: -5.8
++    sy: -2.1
++    stheta: 2.1686
+ 
+     # Poses for 3 opponents below; add sx4/sy4/stheta4 and so on to race more.
+ 
+diff --git a/f1tenth_gym_ros/gym_bridge.py b/f1tenth_gym_ros/gym_bridge.py
+index 26ff94b..8031320 100644
+--- a/f1tenth_gym_ros/gym_bridge.py
++++ b/f1tenth_gym_ros/gym_bridge.py
+@@ -190,6 +190,7 @@ class GymBridge(Node):
+         self.declare_parameter('opp_scan_topic', 'opp_scan')
+         self.declare_parameter('opp_drive_topic', 'opp_drive')
+         self.declare_parameter('lidar_enabled', True)
++        self.declare_parameter('lidar_publish_rate', 30.0)
+         self.declare_parameter('lidar_base_link_to_lidar_tf', [0.275, 0.0, 0.0])
+         self.declare_parameter('lidar_noise_std', 0.01)
+         self.declare_parameter('scan_num_beams', 1080)
+@@ -406,6 +407,14 @@ class GymBridge(Node):
+             # topic publishing timer
+             self.timer = self.create_timer(0.004, self.timer_callback)
+ 
++        # Publish LiDAR independently from odometry and TF.
++        lidar_rate = float(self.get_parameter('lidar_publish_rate').value)
++        if lidar_rate <= 0.0:
++            raise ValueError('lidar_publish_rate must be greater than zero.')
++        self.lidar_timer = self.create_timer(
++            1.0 / lidar_rate, self.lidar_timer_callback
++        )
++
+         # transform broadcaster
+         self.br = TransformBroadcaster(self)
+ 
+@@ -591,6 +600,24 @@ class GymBridge(Node):
+             clock_msg.clock.nanosec = int((sim_time % 1.0) * 1e9)
+             self.clock_pub.publish(clock_msg)
+ 
++    def lidar_timer_callback(self):
++        if self.sim_paused:
++            return
++
++        ts = self.get_clock().now().to_msg()
++        if self.get_parameter('use_sim_time_bridge').value:
++            sim_time = self.env.unwrapped.sim_time
++            ts.sec = int(sim_time // 1.0)
++            ts.nanosec = int((sim_time % 1.0) * 1e9)
++
++        self.ego_scan_pub.publish(self._make_scan_msg(
++            ts, self.ego_namespace, [float(x) for x in self.ego_scan]
++        ))
++        for opp in self.opps:
++            opp.scan_pub.publish(self._make_scan_msg(
++                ts, opp.namespace, [float(x) for x in opp.scan]
++            ))
++
+     def timer_callback(self):
+         if self.sim_paused:
+             return  # Skip stepping the sim if paused
+@@ -602,13 +629,6 @@ class GymBridge(Node):
+             ts.sec = int(sim_time // 1.0)
+             ts.nanosec = int((sim_time % 1.0) * 1e9)
+ 
+-        # pub scans
+-        self.ego_scan = [float(x) for x in self.ego_scan]
+-        self.ego_scan_pub.publish(self._make_scan_msg(ts, self.ego_namespace, self.ego_scan))
+-        for opp in self.opps:
+-            opp.scan = [float(x) for x in opp.scan]
+-            opp.scan_pub.publish(self._make_scan_msg(ts, opp.namespace, opp.scan))
+-
+         # pub collision state (instantaneous; the sim clears it once the car
+         # is stopped or reset, so consumers that care about "ever collided"
+         # must latch it themselves)
+@@ -631,6 +651,10 @@ class GymBridge(Node):
+         scan.angle_increment = self.angle_inc
+         scan.range_min = self.scan_range_min
+         scan.range_max = self.scan_range_max
++        scan.scan_time = 1.0 / float(
++            self.get_parameter('lidar_publish_rate').value
++        )
++        scan.time_increment = 0.0
+         scan.ranges = ranges
+         return scan
+ 

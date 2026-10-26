@@ -32,6 +32,7 @@ class PurePursuit(Node):
         self.declare_parameter('lookahead_distance', 1.0)
         self.declare_parameter('wheelbase', 0.3302)
         self.declare_parameter('target_speed', 5.0)
+        self.declare_parameter('speed_scale', 1.2)
         self.declare_parameter('max_steering_angle', 0.4189)
 
         self.declare_parameter(
@@ -63,6 +64,13 @@ class PurePursuit(Node):
         self.target_speed = self.get_parameter(
             'target_speed'
         ).value
+
+        self.speed_scale = self.get_parameter(
+            'speed_scale'
+        ).value
+
+        if self.speed_scale <= 0.0:
+            raise ValueError('speed_scale must be greater than zero')
 
         self.max_steering_angle = self.get_parameter(
             'max_steering_angle'
@@ -816,15 +824,15 @@ class PurePursuit(Node):
         if self.use_speed_profile:
 
             self.current_target_speed = (
-                self.speed_profile[
-                    nearest_index
-                ]
+                self.speed_profile[nearest_index] *
+                self.speed_scale
             )
 
         else:
 
             self.current_target_speed = (
-                self.target_speed
+                self.target_speed *
+                self.speed_scale
             )
 
         self.update_lap_progress(
