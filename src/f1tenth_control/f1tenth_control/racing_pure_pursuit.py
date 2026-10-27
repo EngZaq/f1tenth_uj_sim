@@ -879,32 +879,12 @@ class PurePursuit(Node):
                 f'CTE={self.latest_cte:.3f} m'
             )
 
-    def collision_callback(
-        self,
-        msg
-    ):
-
-        new_collision = msg.data
-
-        if (
-            new_collision and
-            not self.collision
-        ):
-
+    def collision_callback(self, msg):
+        if msg.data and not self.collision:
             self.get_logger().error(
-                'Collision detected - stopping vehicle'
+                'COLLISION LATCHED - stop and reset simulator'
             )
-
-        elif (
-            not new_collision and
-            self.collision
-        ):
-
-            self.get_logger().info(
-                'Collision cleared'
-            )
-
-        self.collision = new_collision
+        self.collision = self.collision or bool(msg.data)
 
     def control_callback(self):
 
