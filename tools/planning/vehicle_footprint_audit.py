@@ -13,10 +13,12 @@ import numpy as np
 import yaml
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from sim_geometry import LASER
 
 
 def audit(map_yaml, route_file, body_length=0.58, body_width=0.31,
-          rear_axle_to_body_center=0.17145, wheelbase=0.3302,
+          rear_axle_to_body_center=LASER['rear_axle_to_body_center_x_m'], wheelbase=0.3302,
           max_steer=0.4189, body_margin=0.10):
     meta = yaml.safe_load(Path(map_yaml).read_text())
     image = Path(meta['image'])

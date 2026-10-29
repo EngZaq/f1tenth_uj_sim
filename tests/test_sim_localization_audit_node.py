@@ -5,6 +5,7 @@ No ROS installation required. This test deliberately reproduces the
 AttributeError that previously aborted the saved-map mission.
 """
 import csv
+import math
 import importlib.util
 import sys
 import tempfile
@@ -82,6 +83,29 @@ def fake_amcl(t, x, y):
 
 
 class AuditNodeConstructionTest(unittest.TestCase):
+    def test_turn_compares_rear_axle_to_rear_axle(self):
+        audit_module=import_audit_with_ros_stubs()
+        from sim_geometry import REAR_TO_COG
+        def turn(message):
+            p=message.pose.pose
+            p.orientation.z=math.sin(math.pi/4)
+            p.orientation.w=math.cos(math.pi/4)
+            return message
+        with tempfile.TemporaryDirectory() as folder:
+            output=Path(folder)/'rear_truth.csv';node=audit_module.Audit(output)
+            node.on_truth(fake_odom(100,1.,1.))
+            node.on_ekf(fake_odom(100,0.,0.))
+            node.on_amcl(fake_amcl(100,6.,8.))
+            node.on_truth(turn(fake_odom(101,1.-REAR_TO_COG+.5,1.2+REAR_TO_COG)))
+            node.on_ekf(turn(fake_odom(101,.5,.2)))
+            node.on_amcl(turn(fake_amcl(101,6.5,8.2)))
+            node.close()
+            with output.open() as stream:rows=list(csv.DictReader(stream))
+            self.assertAlmostEqual(float(rows[-1]['amcl_relative_pos_error_m']),0.,places=5)
+            self.assertAlmostEqual(float(rows[-1]['ekf_relative_pos_error_m']),0.,places=5)
+            self.assertEqual(rows[-1]['truth_reference_frame'],'rear_axle')
+            self.assertAlmostEqual(float(rows[-1]['raw_cog_y_sim']),1.2+REAR_TO_COG)
+
     def test_construct_log_and_close(self):
         audit_module = import_audit_with_ros_stubs()
         with tempfile.TemporaryDirectory() as folder:

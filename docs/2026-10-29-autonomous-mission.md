@@ -6,6 +6,50 @@ exploration, map saving and route preparation, then stopped before localization
 on a stale SLAM-node graph check. The correction is described below. A complete
 end-to-end ROS/Gym race has not yet been demonstrated with these changes.
 
+## Reference-point correction: CoG versus rear axle
+
+The pinned ROS bridge exposes Gym's **ST model state at the centre of gravity**
+as `ego_racecar/base_link`. The EKF velocity model, Pure Pursuit and route/body
+planner use the **rear axle**, now explicitly the meaning of `fusion_base`.
+These are separated by `lr = 0.17145 m`. Reusing a raw measured TF after merely
+renaming its parent frame was incorrect, despite a correct raw-TF check.
+
+| Geometry | Current value |
+| --- | ---: |
+| Raw simulator CoG to laser | 0.10000 m |
+| Rear axle to CoG | 0.17145 m |
+| `fusion_base` rear axle to `fusion_laser` | **0.27145 m** |
+| Rear axle to collision body centre | 0.16510 m |
+| Body front/rear in rear-axle coordinates | +0.45510 / -0.12490 m |
+| Body dimensions | 0.58 × 0.31 m |
+
+The laser relay still checks the raw 0.100 m TF, then composes the rear-to-CoG
+transform when publishing the fusion laser TF. Scan seeding uses the same
+composed geometry. The route audit, optimizer and local swept guard share the
+simulator's collision-body dimensions and offset. New calibration metadata
+invalidates maps made under the earlier mixed-reference convention, so a full
+mission must create a fresh map. No simulator pose feeds localization or
+steering; the correction uses fixed model geometry only.
+
+The passive audit now converts raw simulator CoG pose to rear-axle pose before
+comparison. It retains raw CoG fields and writes `truth_reference_frame`.
+Earlier audit errors mixed two physical points: during a turn this can produce
+an apparent error up to `2*lr*sin(turn_angle/2)` even with perfect odometry.
+Those historical numerical drift figures below must not be interpreted as
+rear-axle localization accuracy. A 90-degree turning regression verifies that
+the corrected audit reports zero for exactly matching rear-axle trajectories.
+
+This contract is checked against the actual installed pinned Gym package in
+`tests/gym_frame_contract_live.py`: its ST equations, scan-origin method and
+collision-body offset must agree with our shared calibration before a mission
+runs. Primary source: Gym commit
+[`bdaec142`](https://github.com/f1tenth/f1tenth_gym/tree/bdaec1420c3b0f103858d289866d0d4e2e597c30),
+`envs/simulator.py`, `envs/dynamic_models/single_track.py` and the F1TENTH
+parameters in `envs/dynamic_models/__init__.py`.
+
+The optional stop-snapshot writer also handles native Python geometry values
+and catches diagnostic-write failures so they cannot interrupt stopping.
+
 ## Current runtime uncertainty policy
 
 The later full runs show that a single world-axis position sigma is not a

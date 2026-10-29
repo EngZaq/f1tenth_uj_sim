@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sim_geometry import LASER
+from sim_geometry import LASER, FUSION_LASER, BODY_FRONT, BODY_REAR, BODY_HALFWIDTH
 from navigation.pose_uncertainty import planar_covariance
 
 
@@ -47,8 +47,8 @@ def select_clear_speed(nominal,evaluate,preferred_gap=.15):
 
 def command_swept_collision(ranges, angle_min, angle_increment, range_min, range_max,
                             steering, velocity, initial_steering=None,
-                            scan_to_body=(LASER['x_m'],LASER['y_m'],LASER['yaw_rad']),
-                            wheelbase=.3302,front=.46145,rear=-.11855,halfwidth=.155,
+                            scan_to_body=FUSION_LASER,
+                            wheelbase=.3302,front=BODY_FRONT,rear=BODY_REAR,halfwidth=BODY_HALFWIDTH,
                             margin=.07,deceleration=.7,reaction=.35,
                             speed_std=.01,yaw_rate_std=.01):
     """Check a commanded Ackermann stopping tube against local scan endpoints.
@@ -109,13 +109,13 @@ def command_swept_collision(ranges, angle_min, angle_increment, range_min, range
         sampling=.5*spacing*(1+corner_radius*abs(curvature))
         gap=float(np.min(np.hypot(edge_x,edge_y)))-transition-local_noise-sampling
         nearest=min(nearest,gap)
-    return nearest<margin,nearest,count
+    return bool(nearest<margin),float(nearest),count
 
 
 def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_max,
                          route, pose, nearest_idx, velocity,
-                         wheelbase=0.3302, laser_x=LASER['x_m'],
-                         front=0.46145, rear=-0.11855, halfwidth=0.155,
+                         wheelbase=0.3302, laser_x=FUSION_LASER[0],
+                         front=BODY_FRONT, rear=BODY_REAR, halfwidth=BODY_HALFWIDTH,
                          margin=0.07, deceleration=0.7, reaction=0.35,
                          laser_y=LASER['y_m'], laser_yaw=LASER['yaw_rad'],
                          pose_covariance=None, uncertainty_sigma=3.):

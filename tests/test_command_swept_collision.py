@@ -1,5 +1,6 @@
 """Commanded motion and scan compensation, independent of global pose."""
 import math
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -16,6 +17,7 @@ class CommandCollisionTest(unittest.TestCase):
 
     def check(self,scan,steering=0.,speed=.4,**kwargs):
         ranges,a,step=scan
+        kwargs.setdefault('scan_to_body',(.1,0.,0.))
         return command_swept_collision(ranges,a,step,.05,25.,steering,speed,**kwargs)
 
     def test_forward_obstacle_inside_braking_travel_is_blocked(self):
@@ -87,7 +89,8 @@ class LocalSpeedTest(unittest.TestCase):
         ranges=(.95-.1)/np.cos(angles)
         def evaluate(proposal,measured):
             blocked,gap,hits=command_swept_collision(
-                ranges,angles[0],angles[1]-angles[0],.05,25.,0.,max(measured,proposal))
+                ranges,angles[0],angles[1]-angles[0],.05,25.,0.,max(measured,proposal),
+                scan_to_body=(.1,0.,0.))
             return blocked,gap,hits
         self.assertLess(select_clear_speed(.8,lambda v:evaluate(v,.15))[0],.8)
         with self.assertRaisesRegex(ValueError,'no safe local speed'):
@@ -102,6 +105,11 @@ class LocalSpeedTest(unittest.TestCase):
             select_clear_speed(.4,lambda v:(True,.01,v))
         with self.assertRaises(ValueError):
             select_clear_speed(.4,lambda v:(False,float('nan'),v))
+
+    def test_geometry_results_can_be_saved_as_stop_evidence(self):
+        scan=CommandCollisionTest().wall(.8)
+        result=command_swept_collision(scan[0],scan[1],scan[2],.05,25.,0.,.4)
+        json.dumps(dict(blocked=result[0],gap=result[1],hits=result[2]))
 
 
 if __name__=='__main__':unittest.main()

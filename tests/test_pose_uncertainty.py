@@ -11,6 +11,7 @@ sys.path.insert(0,str(ROOT/'tools/navigation'))
 from pose_uncertainty import planar_covariance, project_uncertainty
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from trajectory_safety import swept_path_collision, stopping_horizon
+from sim_geometry import FUSION_LASER
 from racing_policy import route_progress_delta
 
 
@@ -85,7 +86,7 @@ class CovarianceCollisionTest(unittest.TestCase):
         self.assertTrue(self.side_guard(np.diag([.01**2,.005**2,.08**2]))[0])
 
     def test_longitudinal_uncertainty_stops_before_a_forward_wall(self):
-        angles=np.linspace(-.4,.4,81);ranges=(1.10-.1)/np.cos(angles)
+        angles=np.linspace(-.4,.4,81);ranges=(1.10-FUSION_LASER[0])/np.cos(angles)
         args=(ranges,angles[0],angles[1]-angles[0],.05,25.,self.route(),(0.,0.,0.),0,.4)
         self.assertFalse(swept_path_collision(*args)[0])
         self.assertTrue(swept_path_collision(*args,pose_covariance=np.diag([.10**2,.005**2,.001**2]))[0])

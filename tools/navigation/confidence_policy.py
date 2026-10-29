@@ -26,7 +26,7 @@ class ConfidenceGate:
               along_std=None, major_std=None):
         # Legacy scalar callers remain supported. The driving node supplies
         # route-normal position sigma plus tangent and rotation-invariant major
-        # sigmas. The collision guard then budgets the complete covariance.
+        # sigmas. Collision prediction separately uses local body-frame motion.
         extra=tuple(v for v in (along_std,major_std) if v is not None)
         if not all(map(math.isfinite, (now, stamp, position_std, yaw_std, vehicle_speed)+extra)):
             return 'FAULT', 'nonfinite AMCL covariance/speed/time'

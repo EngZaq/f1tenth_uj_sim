@@ -16,7 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 sys.path.insert(0,str(ROOT/'tools/localization'))
 sys.path.insert(0,str(ROOT/'tools/planning'))
-from sim_geometry import LASER, laser_points, validate_reference_transform
+from sim_geometry import LASER, FUSION_LASER, REAR_TO_COG, rear_axle_pose, laser_points, validate_reference_transform
 
 
 def load(name, relative):
@@ -69,14 +69,34 @@ class GeometryTest(unittest.TestCase):
     def test_actual_measured_mount_used_by_seed_and_guard(self):
         self.assertEqual(LASER['x_m'],.1)
         result=laser_points(np.array([1.]),np.array([0.]))
-        np.testing.assert_allclose(result,[[1.1,0.]])
+        np.testing.assert_allclose(result,[[1.27145,0.]])
         seed=load('seed_test','tools/mission/map_scan_seed.py')
         scan=NS(angle_min=0.,angle_increment=.01,ranges=[1.]*200,range_min=.05,range_max=25.)
         hits,inside=seed.scan_points(scan)
-        np.testing.assert_allclose(hits[0],[1.1,0.])
-        np.testing.assert_allclose(inside[0],[.85,0.])
+        np.testing.assert_allclose(hits[0],[1.27145,0.])
+        np.testing.assert_allclose(inside[0],[1.02145,0.])
         safety=load('trajectory_test','tools/navigation/trajectory_safety.py')
-        self.assertEqual(safety.swept_path_collision.__defaults__[1],.1)
+        self.assertAlmostEqual(safety.swept_path_collision.__defaults__[1],.27145)
+
+    def test_cog_and_rear_frames_place_same_laser_in_world(self):
+        for heading in (0.,.8,2.,-2.4):
+            cog=(1.2,-3.,heading);rear=rear_axle_pose(cog)
+            c,s=math.cos(heading),math.sin(heading)
+            raw=np.array(cog[:2])+LASER['x_m']*np.array([c,s])
+            fused=np.array(rear[:2])+FUSION_LASER[0]*np.array([c,s])
+            np.testing.assert_allclose(raw,fused,atol=1e-12)
+
+    def test_rear_model_and_cog_motion_agree_while_turning(self):
+        # Low-speed ST kinematics: CoG has lateral velocity lr*yaw_rate;
+        # translating to the rear axle removes it. Test several turns.
+        for heading in (0.,.8,2.):
+            for steering in (-.4,0.,.4):
+                forward=.3;rate=forward*math.tan(steering)/.3302
+                c,s=math.cos(heading),math.sin(heading)
+                cog_velocity=np.array([c*forward-s*REAR_TO_COG*rate,
+                                       s*forward+c*REAR_TO_COG*rate])
+                rear_velocity=cog_velocity+REAR_TO_COG*rate*np.array([s,-c])
+                np.testing.assert_allclose(rear_velocity,[c*forward,s*forward],atol=1e-12)
 
 
 class WatchdogTest(unittest.TestCase):

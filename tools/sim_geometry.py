@@ -8,17 +8,31 @@ CONFIG = Path(__file__).resolve().parents[1]/'config/sim_laser_geometry.yaml'
 
 def load_laser_geometry(path=CONFIG):
     data = yaml.safe_load(Path(path).read_text())
-    for key in ('x_m', 'y_m', 'yaw_rad'):
+    for key in ('x_m', 'y_m', 'yaw_rad','rear_axle_to_reference_body_x_m',
+                'rear_axle_to_body_center_x_m','body_length_m','body_width_m'):
         data[key] = float(data[key])
         if not math.isfinite(data[key]):
             raise ValueError('Laser geometry must be finite')
     for key in ('reference_body_frame', 'reference_scan_frame'):
         if not isinstance(data[key], str) or not data[key]:
             raise ValueError('Missing reference laser frame')
+    if data.get('fusion_body_reference')!='rear_axle':
+        raise ValueError('This kinematic stack requires a rear-axle fusion frame')
     return data
 
 
 LASER = load_laser_geometry()
+REAR_TO_COG=LASER['rear_axle_to_reference_body_x_m']
+FUSION_LASER=(REAR_TO_COG+LASER['x_m'],LASER['y_m'],LASER['yaw_rad'])
+BODY_FRONT=LASER['rear_axle_to_body_center_x_m']+LASER['body_length_m']/2
+BODY_REAR=LASER['rear_axle_to_body_center_x_m']-LASER['body_length_m']/2
+BODY_HALFWIDTH=LASER['body_width_m']/2
+
+
+def rear_axle_pose(cog_pose):
+    """Pinned ST simulator state (CoG) -> kinematic rear axle; evaluation only."""
+    x,y,yaw=cog_pose
+    return x-REAR_TO_COG*math.cos(yaw),y-REAR_TO_COG*math.sin(yaw),yaw
 
 
 def validate_reference_transform(transform):
@@ -39,5 +53,5 @@ def validate_reference_transform(transform):
 def laser_points(ranges, bearings, scale=1.0):
     # NumPy arrays are supported without importing NumPy in this module.
     import numpy as np
-    return np.column_stack((LASER['x_m']+scale*ranges*np.cos(bearings+LASER['yaw_rad']),
-                            LASER['y_m']+scale*ranges*np.sin(bearings+LASER['yaw_rad'])))
+    return np.column_stack((FUSION_LASER[0]+scale*ranges*np.cos(bearings+FUSION_LASER[2]),
+                            FUSION_LASER[1]+scale*ranges*np.sin(bearings+FUSION_LASER[2])))

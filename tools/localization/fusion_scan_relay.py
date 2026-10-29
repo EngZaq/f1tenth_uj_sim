@@ -18,7 +18,7 @@ from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from tf2_ros import Buffer, TransformListener, TransformException
 from rclpy.time import Time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sim_geometry import LASER, validate_reference_transform
+from sim_geometry import LASER, FUSION_LASER, validate_reference_transform
 
 class Relay(Node):
     def __init__(self):
@@ -34,10 +34,10 @@ class Relay(Node):
         tf.header.stamp = self.get_clock().now().to_msg()
         tf.header.frame_id = 'fusion_base'
         tf.child_frame_id = 'fusion_laser'
-        tf.transform.translation.x = LASER['x_m']
-        tf.transform.translation.y = LASER['y_m']
-        tf.transform.rotation.z = math.sin(LASER['yaw_rad']/2)
-        tf.transform.rotation.w = math.cos(LASER['yaw_rad']/2)
+        tf.transform.translation.x = FUSION_LASER[0]
+        tf.transform.translation.y = FUSION_LASER[1]
+        tf.transform.rotation.z = math.sin(FUSION_LASER[2]/2)
+        tf.transform.rotation.w = math.cos(FUSION_LASER[2]/2)
         self.laser_transform = tf
         self.get_logger().info(f'Waiting to verify laser calibration: {LASER}')
 

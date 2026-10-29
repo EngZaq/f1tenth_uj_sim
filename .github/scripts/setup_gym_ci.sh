@@ -20,6 +20,7 @@ python3 -m venv --system-site-packages "$CI_SIM_WS/.venv"
 source "$CI_SIM_WS/.venv/bin/activate"
 python3 -m pip install 'numpy<2' 'opencv-python<4.12' 'matplotlib<4' 'setuptools<80' 'scikit-image<0.26'
 python3 -m pip install "$GYM_SOURCE"
+python3 "$REPO_ROOT/tests/gym_frame_contract_live.py"
 # Fail dependency setup before spending a mapping lap if planning cannot import.
 python3 "$REPO_ROOT/tools/planning/extract_robust_centerline.py" --help >/dev/null
 python3 "$REPO_ROOT/tools/planning/prepare_vehicle_route.py" --help >/dev/null

@@ -5,7 +5,8 @@
 Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
 automatic exploration, fresh mapping, route preparation, AMCL startup and three
 estimated-pose laps. The shared laser mounting is corrected to the measured
-0.100 m, and a separate command watchdog owns `/drive`. This integrated workflow
+0.100 m from Gym’s CoG; the rear-axle fusion frame uses the composed 0.27145 m
+laser offset. A separate command watchdog owns `/drive`. This integrated workflow
 completed exploration, fresh mapping and route preparation in the first laptop
 run. The SLAM-to-AMCL handoff now uses bounded fresh ROS graph checks to avoid
 stale CLI node listings. A complete live ROS/Gym race remains unverified.

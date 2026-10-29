@@ -234,10 +234,14 @@ class ProfiledAMCLDrive(Node):
     def hold(self, reason):
         if not self.latch:
             self.latch = reason
+            self.enabled = False
             self.get_logger().error(f'SAFETY HOLD: {reason}. Requires mission restart.')
             if self.guard_snapshot is not None:
-                self.guard_path.write_text(json.dumps(
-                    dict(self.guard_snapshot,stop_reason=reason),indent=2)+'\n')
+                try:
+                    self.guard_path.write_text(json.dumps(
+                        dict(self.guard_snapshot,stop_reason=reason),indent=2)+'\n')
+                except (OSError,TypeError,ValueError) as exc:
+                    self.get_logger().warn(f'Could not save optional stop snapshot: {exc}')
         self.enabled = False
 
     def nomotion_update(self, monotonic_now, pose_age):
