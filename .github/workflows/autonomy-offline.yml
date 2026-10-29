@@ -7,6 +7,8 @@ on:
       - "tools/planning/vehicle_footprint_audit.py"
       - "tools/planning/optimize_vehicle_route.py"
       - "tools/mission/run_profiled_saved_map.py"
+      - "tools/localization/sim_localization_audit.py"
+      - "tools/localization/summarize_sim_localization_audit.py"
       - "tests/**"
       - ".github/workflows/autonomy-offline.yml"
   workflow_dispatch:
@@ -31,7 +33,9 @@ jobs:
             tools/navigation/profiled_amcl_drive.py \
             tools/planning/vehicle_footprint_audit.py \
             tools/planning/optimize_vehicle_route.py \
-            tools/mission/run_profiled_saved_map.py
+            tools/mission/run_profiled_saved_map.py \
+            tools/localization/sim_localization_audit.py \
+            tools/localization/summarize_sim_localization_audit.py
       - name: Test profile tracking and predicted collision geometry
         run: |
           python tests/test_racing_policy.py
