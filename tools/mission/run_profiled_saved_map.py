@@ -104,7 +104,7 @@ def wrap(a):return math.atan2(math.sin(a),math.cos(a))
 def main():
     required=[MAP,RECOVERED/'new_track.pgm',LAP,PATH,
               ROOT/'tools/fusion/sim_vesc_imu.py',ROOT/'tools/localization/fusion_scan_relay.py',
-              ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',MISSION/'mission_amcl.launch.py',
+              ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',ROOT/'tools/localization/sim_localization_audit.py',MISSION/'mission_amcl.launch.py',
               MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml']
     for f in required:
         if not f.exists():raise RuntimeError(f'Missing {f}')
@@ -154,6 +154,11 @@ def main():
     params=RUN/'recovered_map_amcl.yaml';params.write_text(yaml.safe_dump(cfg,sort_keys=False))
     start('amcl',['ros2','launch',MISSION/'mission_amcl.launch.py',f'params:={params}',f'map_yaml:={MAP}'])
     wait_active()
+    # Passive simulator-only localization audit: truth is never fed back to
+    # controller, TF, map seeding, or estimator.
+    start('localization_audit',['python3','-u',
+          ROOT/'tools/localization/sim_localization_audit.py',
+          '--output',RUN/'localization_truth_audit.csv'])
     live=read_amcl_pose()
     x,y=live['position']['x'],live['position']['y']
     q=live['orientation'];yaw=math.atan2(2*(q['w']*q['z']+q['x']*q['y']),1-2*(q['y']**2+q['z']**2))
