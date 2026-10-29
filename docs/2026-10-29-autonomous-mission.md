@@ -43,6 +43,17 @@ This is a model-based bound, not calibrated collision probability or a physical
 emergency-stop certificate. Map deformation and missed/occluded obstacles
 remain limitations of the overall stack.
 
+The covariance-budgeted guard evaluates a physical stopping tube: reaction
+travel plus `v^2/(2*0.7)` and a 0.10 m sampling buffer, including the first route
+waypoint beyond that interval. Reaction time is at least 0.35 s and grows to
+`scan_age + 0.25 s` for older accepted scans. The previous extra 0.55 m extension
+in addition to the full body overhang could stop the car for an uncertain
+future corner long before it needed to brake. The current tube retains the
+full body, the three-sigma covariance budget and base margin while explicitly
+covering reaction/braking travel. Tests place obstacles inside that stopping
+distance at several speeds and verify stopping. The 0.7 m/s² deceleration is
+still a simulation model assumption requiring hardware-specific verification.
+
 The existing `predicted_body_gap_m` CSV field now reports that conservative,
 uncertainty-adjusted gap. New fields include `amcl_major_std_m` and
 `uncertainty_speed_cap_mps`. The controller parameters are

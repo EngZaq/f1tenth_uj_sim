@@ -31,7 +31,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from pose_uncertainty import planar_covariance, project_uncertainty
-from trajectory_safety import swept_path_collision
+from trajectory_safety import swept_path_collision, stopping_horizon
 
 
 def stamp_s(stamp):
@@ -156,7 +156,7 @@ class ProfiledAMCLDrive(Node):
                               'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state',
                               'amcl_across_track_std_m', 'amcl_along_track_std_m',
                               'measured_speed_mps','amcl_stamp_s','amcl_major_std_m',
-                              'uncertainty_speed_cap_mps'])
+                              'uncertainty_speed_cap_mps','stopping_horizon_m'])
         self.timer = self.create_timer(.05, self.tick)
         self.get_logger().warn(
             f'PROFILED CONTROLLER DISABLED; route={p("waypoints_file")}, log={csv_path}, cap={self.speed_limit}m/s. '
@@ -248,6 +248,7 @@ class ProfiledAMCLDrive(Node):
         across_std = along_std = float('nan')
         major_std = float('nan')
         confidence_cap = float('nan')
+        horizon = float('nan')
         index = self.index if self.index is not None else -1
         valid_hits = 0
         speed = steer = 0.
@@ -315,14 +316,17 @@ class ProfiledAMCLDrive(Node):
                         steer = self.route.aim(x, y, yaw, index, lookahead, self.max_steer)
                         # Evaluate measured laser endpoints against *predicted
                         # vehicle body positions* along the map-frame route.
+                        guard_velocity=max(self.measured_speed,self.last_output_speed,plan)
+                        reaction=max(.35,max(0.,scan_age)+.25)
+                        horizon=stopping_horizon(guard_velocity,reaction)
                         blocked, gap, valid_hits = swept_path_collision(
                             self.scan.ranges, self.scan.angle_min,
                             self.scan.angle_increment, self.scan.range_min,
                             self.scan.range_max, self.route.data, (x, y, yaw),
-                            index, max(self.measured_speed, self.last_output_speed, plan),
+                            index,guard_velocity,reaction=reaction,
                             margin=self.margin,pose_covariance=covariance)
                         if blocked:
-                            raise ValueError(f'predicted swept-path obstruction {gap:.3f}m, hits={valid_hits}')
+                            raise ValueError(f'predicted swept-path obstruction {gap:.3f}m, hits={valid_hits}, stopping_horizon={horizon:.3f}m')
                         if self.started and self.index is not None:
                             self.progress += route_progress_delta(self.index,index,self.route.n)
                         if self.last_xy is not None:
@@ -365,7 +369,7 @@ class ProfiledAMCLDrive(Node):
             f'{across_std:.4f}', f'{along_std:.4f}',
             f'{self.measured_speed:.6f}',
             f'{self.pose_stamp:.9f}' if self.pose_stamp is not None else 'nan',
-            f'{major_std:.4f}',f'{confidence_cap:.4f}'])
+            f'{major_std:.4f}',f'{confidence_cap:.4f}',f'{horizon:.4f}'])
         if mono-self.last_print > 1.0:
             self.fp.flush()
             self.get_logger().info(

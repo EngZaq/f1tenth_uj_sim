@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools/navigation'))
 from pose_uncertainty import planar_covariance, project_uncertainty
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
-from trajectory_safety import swept_path_collision
+from trajectory_safety import swept_path_collision, stopping_horizon
 from racing_policy import route_progress_delta
 
 
@@ -85,10 +85,26 @@ class CovarianceCollisionTest(unittest.TestCase):
         self.assertTrue(self.side_guard(np.diag([.01**2,.005**2,.08**2]))[0])
 
     def test_longitudinal_uncertainty_stops_before_a_forward_wall(self):
-        angles=np.linspace(-.4,.4,81);ranges=(1.45-.1)/np.cos(angles)
+        angles=np.linspace(-.4,.4,81);ranges=(1.10-.1)/np.cos(angles)
         args=(ranges,angles[0],angles[1]-angles[0],.05,25.,self.route(),(0.,0.,0.),0,.4)
         self.assertFalse(swept_path_collision(*args)[0])
         self.assertTrue(swept_path_collision(*args,pose_covariance=np.diag([.10**2,.005**2,.001**2]))[0])
+
+    def test_guard_covers_reaction_and_braking_before_forward_obstacle(self):
+        angles=np.linspace(-.4,.4,81)
+        for speed in (.2,.4,.8):
+            reaction=.70
+            distance=speed*reaction+speed*speed/(2*.7)
+            obstacle=.46145+distance-.02
+            ranges=(obstacle-.1)/np.cos(angles)
+            self.assertTrue(swept_path_collision(ranges,angles[0],angles[1]-angles[0],
+                .05,25.,self.route(),(0.,0.,0.),0,speed,reaction=reaction)[0])
+
+    def test_stopping_horizon_increases_for_scan_age_and_contains_buffer(self):
+        for speed in (0.,.2,.4,.8):
+            expected=speed*.7+speed*speed/(2*.7)
+            self.assertGreaterEqual(stopping_horizon(speed,.7),expected+.1-1e-10)
+            self.assertGreaterEqual(stopping_horizon(speed,.7),stopping_horizon(speed,.35))
 
     def test_collision_budget_is_invariant_to_global_map_rotation(self):
         covariance=np.diag([.08**2,.01**2,.02**2])

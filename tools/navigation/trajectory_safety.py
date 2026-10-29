@@ -11,6 +11,14 @@ from sim_geometry import LASER
 from navigation.pose_uncertainty import planar_covariance
 
 
+def stopping_horizon(velocity, reaction=.35, deceleration=.7, buffer=.10):
+    if (not all(math.isfinite(v) for v in (velocity,reaction,deceleration,buffer)) or
+            reaction<0 or deceleration<=0 or buffer<.10):
+        raise ValueError('Invalid stopping-horizon inputs')
+    speed=max(0.,float(velocity))
+    return speed*reaction+speed*speed/(2*deceleration)+buffer
+
+
 def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_max,
                          route, pose, nearest_idx, velocity,
                          wheelbase=0.3302, laser_x=LASER['x_m'],
@@ -45,24 +53,28 @@ def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_ma
     hits = np.column_stack((laser_x + radii * np.cos(bearings+laser_yaw),
                             laser_y + radii * np.sin(bearings+laser_yaw)))
     speed = max(0.0, float(velocity))
-    horizon = max(0.55, speed * reaction +
-                  speed * speed / (2 * max(deceleration, 0.1)) + 0.55)
+    # The rectangle already includes the full front/rear overhang. Check the
+    # distance travelled during reaction and braking plus a sampling buffer;
+    # do not count another vehicle-length-scale extension as stopping distance.
+    horizon = stopping_horizon(speed,reaction,deceleration)
 
     base_s = float(route[nearest_idx, 0])
-    closed_length = float(route[-1, 0]) + 0.1
+    closed_length = float(route[-1,0])+float(np.linalg.norm(route[-1,1:3]-route[0,1:3]))
     x0, y0, yaw0 = pose
     c0, s0 = math.cos(yaw0), math.sin(yaw0)
     footprints = [(0.0, 0.0, 0.0)]
     for offset in range(min(len(route), 100)):
         i = (nearest_idx + offset) % len(route)
         ds = (float(route[i, 0]) - base_s) % max(closed_length, 0.1)
-        if offset > 0 and ds > horizon:
-            break
         dx, dy = route[i, 1] - x0, route[i, 2] - y0
         heading = math.atan2(math.sin(route[i, 3] - yaw0),
                              math.cos(route[i, 3] - yaw0))
         footprints.append((c0 * dx + s0 * dy,
                            -s0 * dx + c0 * dy, heading))
+        # Include the first waypoint beyond the horizon to cover the whole
+        # stopping interval despite discrete route sampling.
+        if offset>0 and ds>=horizon:
+            break
 
     nearest = float('inf')
     for footprint_index,(x, y, heading) in enumerate(footprints):
