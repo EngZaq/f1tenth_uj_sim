@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Initialize simulation AMCL from scan matching with explicit uncertainty.
 
-Publishes one /initialpose message, never /drive or TF. Parameter-only pose
+Publishes one /fusion/initialpose message, never /drive or TF. The global
+/initialpose topic resets the Gym vehicle and must not receive this SLAM pose.
+Parameter-only pose
 initialization in Nav2 Humble constructs a message with zero covariance.
 This helper uses a nonzero experimental prior, not a calibrated confidence
 estimate derived from the scan-match score. Driving remains separately gated.
@@ -11,6 +13,8 @@ import json
 import math
 import time
 from pathlib import Path
+
+INITIAL_POSE_TOPIC = '/fusion/initialpose'
 
 
 def pose_payload(seed, position_std_m=0.10, yaw_std_deg=5.0):
@@ -55,7 +59,7 @@ def publish_and_confirm(node, publisher, message, observations, timeout,
     deadline = clock()+timeout
     while publisher.get_subscription_count() == 0:
         if clock() >= deadline:
-            raise RuntimeError('No AMCL /initialpose subscriber; initialization aborted')
+            raise RuntimeError(f'No AMCL {INITIAL_POSE_TOPIC} subscriber; initialization aborted')
         spin_once(node, timeout_sec=0.1)
     message.header.stamp = node.get_clock().now().to_msg()
     sent_stamp = stamp_s(message)
@@ -72,7 +76,7 @@ def publish_and_confirm(node, publisher, message, observations, timeout,
                         all(math.isfinite(covariance[i]) and covariance[i] >= 0
                             for i in (0, 7, 35))):
                     return reply
-    raise RuntimeError('No fresh AMCL reply after /initialpose; initialization unconfirmed')
+    raise RuntimeError(f'No fresh AMCL reply after {INITIAL_POSE_TOPIC}; initialization unconfirmed')
 
 
 def main():
@@ -101,7 +105,7 @@ def main():
         observations = []
         node.create_subscription(PoseWithCovarianceStamped, '/amcl_pose',
                                  observations.append, 10)
-        publisher = node.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
+        publisher = node.create_publisher(PoseWithCovarianceStamped, INITIAL_POSE_TOPIC, 10)
         message = PoseWithCovarianceStamped()
         message.header.frame_id = payload['header']['frame_id']
         for key, value in payload['pose']['pose']['position'].items():

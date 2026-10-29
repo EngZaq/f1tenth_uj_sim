@@ -3,6 +3,7 @@ import contextlib
 import importlib.util
 import io
 import math
+import sys
 import tempfile
 import types
 import unittest
@@ -70,7 +71,7 @@ class SeedTest(unittest.TestCase):
         sent = []
         pub = NS(get_subscription_count=lambda: 0, publish=sent.append)
         ticks = iter([i*.1 for i in range(100)])
-        with self.assertRaisesRegex(RuntimeError, 'No AMCL /initialpose subscriber'):
+        with self.assertRaisesRegex(RuntimeError, 'No AMCL /fusion/initialpose subscriber'):
             INIT.publish_and_confirm(None, pub, message(), [], .2,
                                      lambda *a, **k: None, lambda: next(ticks))
         self.assertFalse(sent)
@@ -87,6 +88,28 @@ class SeedTest(unittest.TestCase):
 
 
 class ObserverRoutingTest(unittest.TestCase):
+    def test_seed_topic_is_isolated_from_gym_reset(self):
+        # Build the actual launch description with lightweight launch objects.
+        # Verify its remapping matches the initializer and cannot reach the
+        # Gym bridge's global /initialpose reset subscription.
+        launch = types.ModuleType('launch')
+        launch.LaunchDescription = lambda nodes: nodes
+        actions = types.ModuleType('launch.actions')
+        actions.DeclareLaunchArgument = lambda *a, **k: NS(kind='argument')
+        substitutions = types.ModuleType('launch.substitutions')
+        substitutions.LaunchConfiguration = lambda name: name
+        ros = types.ModuleType('launch_ros')
+        ros_actions = types.ModuleType('launch_ros.actions')
+        ros_actions.Node = lambda **kwargs: NS(**kwargs)
+        with patch.dict(sys.modules, {'launch': launch, 'launch.actions': actions,
+                'launch.substitutions': substitutions, 'launch_ros': ros,
+                'launch_ros.actions': ros_actions}):
+            module = load('mission_amcl_launch_test', 'tools/mission/mission_amcl.launch.py')
+            nodes = module.generate_launch_description()
+        amcl = next(node for node in nodes if getattr(node, 'executable', '') == 'amcl')
+        self.assertIn(('initialpose', INIT.INITIAL_POSE_TOPIC), amcl.remappings)
+        self.assertNotEqual(INIT.INITIAL_POSE_TOPIC, '/initialpose')
+
     def exercise(self, fail_initialization=False):
         module = load('saved_map_launcher_test', 'tools/mission/run_profiled_saved_map.py')
         starts, calls = [], []

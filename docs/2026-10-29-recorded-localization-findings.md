@@ -64,13 +64,22 @@ own run and calls `initialize_amcl_pose.py` after AMCL lifecycle activation.
 The helper:
 
 1. Uses the existing live scan-match x/y/yaw, without reading simulator truth.
-2. Sends one `/initialpose` message with explicit covariance in `slam_map`.
+2. Sends one `/fusion/initialpose` message with explicit covariance in `slam_map`.
 3. Waits for a subscriber before sending and a fresh valid AMCL pose afterward.
 4. Aborts initialization on failure; it does not silently fall back to a
    zero-covariance seed or repeatedly reset the particle filter.
 5. Saves the supplied prior and acknowledgement timestamps to
    `amcl_initial_pose.json`. A fresh reply acknowledges the startup exchange;
    it does not independently verify pose accuracy.
+
+The mission AMCL launch remaps its `initialpose` input to `/fusion/initialpose`.
+This isolation is essential: the inspected F1TENTH Gym ROS bridge subscribes to
+global `/initialpose` and resets the simulated car from that message, without
+converting our SLAM coordinates to Gym coordinates. Publishing our seed globally
+would therefore teleport the car. The isolated topic and launch remapping have
+a dedicated topology test; no simulator reset is part of this initialization.
+Bridge source inspected: `f1tenth_gym_ros/gym_bridge.py` blob
+`26ff94b3684b362eb8ce86b914689c445e7056ac` on `dev-humble`.
 
 The initial experimental standard deviations are 0.10 m in x/y and 5 degrees
 in yaw, overridable on the launcher CLI. The corresponding covariance diagonal
@@ -131,10 +140,11 @@ timing and the actual Nav2 version before deciding on another moving test.
 
 ## Validation and limits
 
-The expanded offline suite contains 29 passing tests, including variance units,
+The expanded offline suite contains 30 passing tests, including variance units,
 invalid/underflowing/overflowing priors, a single publish with fresh
 acknowledgement, timeouts, observer routing with no controller/arming, startup
-failure abort and backward-compatible recorder columns. The figure was
+failure abort, AMCL/Gym seed-topic isolation and backward-compatible recorder
+columns. The figure was
 visually inspected. Existing offline geometry checks are preserved.
 
 No ROS 2 graph or new simulated lap was run in the editing environment. No
