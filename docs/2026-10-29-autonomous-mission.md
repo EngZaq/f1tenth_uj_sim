@@ -61,6 +61,22 @@ within the initial/requested interval and deceleration is at least 0.7 m/s².
 They require separate actuator/noise measurements before hardware use.
 Occluded/missed obstacles and sensor-model faults remain limitations.
 
+The first live commanded-motion run then exposed a missing speed-planning
+step: the route/AMCL cap rose from about 0.29 to 0.40 m/s just before a tight
+turn, and the local braking tube reached the hard clearance bound. The
+controller now tests descending speed proposals before publishing, each with
+its own lookahead/steering and a guard speed no lower than measured/previous
+commanded speed. It prefers the highest sampled proposal with 0.15 m adjusted
+clearance (the 0.07 m hard bound plus 0.08 m planning reserve). If only hard
+clearance is available, it selects the slowest hard-clear proposal, down to
+0.05 m/s. If no proposal is hard-clear it still latches a stop. Speed reduction
+cannot erase the stopping distance of an already moving car. This makes
+clearance an input to speed planning rather than only a terminal rejection.
+The chosen speed is still acceleration/deceleration limited. The CSV records
+the pre-local route cap and whether local clearance reduced it. A stopped run
+also retains scan ranges, the local transform and evaluated proposals in
+`guard_stop_context.json` for a direct geometry replay.
+
 The existing `predicted_body_gap_m` CSV field now reports that conservative,
 local-motion-tube-adjusted gap. New fields include `amcl_major_std_m` and
 `uncertainty_speed_cap_mps`. The controller parameters are

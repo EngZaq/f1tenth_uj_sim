@@ -19,6 +19,32 @@ def stopping_horizon(velocity, reaction=.35, deceleration=.7, buffer=.10):
     return speed*reaction+speed*speed/(2*deceleration)+buffer
 
 
+def select_clear_speed(nominal,evaluate,preferred_gap=.15):
+    """Choose the fastest sampled proposal with clearance in reserve.
+
+    evaluate(speed) returns (blocked, gap, payload), and must check the tube
+    using at least measured/previous speed, even for a slower proposal. If
+    none has the preferred reserve, creep at the slowest hard-clear proposal.
+    Never turn an obstructed measured stopping tube into permission to move.
+    """
+    if not math.isfinite(nominal) or nominal<=0 or not math.isfinite(preferred_gap) or preferred_gap<=0:
+        raise ValueError('Invalid local speed selection bounds')
+    floor=min(.05,nominal)
+    proposals=sorted(set([max(floor,nominal*f) for f in (1.,.85,.7,.55,.4,.25)]+[floor]),reverse=True)
+    fallback=None
+    for speed in proposals:
+        blocked,gap,payload=evaluate(speed)
+        if not math.isfinite(gap):
+            raise ValueError('Invalid local tube clearance')
+        if not blocked:
+            fallback=(speed,gap,payload)
+            if gap>=preferred_gap:
+                return fallback
+    if fallback is None:
+        raise ValueError('no safe local speed: measured/proposed stopping tube obstructed')
+    return fallback
+
+
 def command_swept_collision(ranges, angle_min, angle_increment, range_min, range_max,
                             steering, velocity, initial_steering=None,
                             scan_to_body=(LASER['x_m'],LASER['y_m'],LASER['yaw_rad']),

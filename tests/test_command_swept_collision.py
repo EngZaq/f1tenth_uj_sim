@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools/navigation'))
-from trajectory_safety import command_swept_collision,stopping_horizon
+from trajectory_safety import command_swept_collision,stopping_horizon,select_clear_speed
 
 
 class CommandCollisionTest(unittest.TestCase):
@@ -69,6 +69,39 @@ class CommandCollisionTest(unittest.TestCase):
         for kwargs in ({'initial_steering':float('nan')},{'scan_to_body':(0.,0.,float('nan'))},
                        {'speed_std':-.01},{'steering':.5},{'speed':-.1}):
             with self.assertRaises(ValueError):self.check(self.wall(2.),**kwargs)
+
+
+class LocalSpeedTest(unittest.TestCase):
+    def test_clear_road_preserves_route_speed(self):
+        result=select_clear_speed(.4,lambda v:(False,.4,{'chosen':v}))
+        self.assertEqual(result,(.4,.4,{'chosen':.4}))
+
+    def test_shrinking_clearance_slows_before_hard_stop(self):
+        # At 0.4 the tube is still hard-clear, but lacks the desired reserve.
+        result=select_clear_speed(.4,lambda v:(False,.30-.5*v,v))
+        self.assertLess(result[0],.4)
+        self.assertGreaterEqual(result[1],.15)
+
+    def test_forward_wall_allows_lower_speed_only_when_measured_tube_clear(self):
+        angles=np.linspace(-.4,.4,81)
+        ranges=(.95-.1)/np.cos(angles)
+        def evaluate(proposal,measured):
+            blocked,gap,hits=command_swept_collision(
+                ranges,angles[0],angles[1]-angles[0],.05,25.,0.,max(measured,proposal))
+            return blocked,gap,hits
+        self.assertLess(select_clear_speed(.8,lambda v:evaluate(v,.15))[0],.8)
+        with self.assertRaisesRegex(ValueError,'no safe local speed'):
+            select_clear_speed(.8,lambda v:evaluate(v,.8))
+
+    def test_hard_clear_creep_if_no_proposal_has_reserve(self):
+        result=select_clear_speed(.4,lambda v:(False,.09,v))
+        self.assertEqual(result[0],.05)
+
+    def test_obstructed_or_corrupt_tube_cannot_creep(self):
+        with self.assertRaises(ValueError):
+            select_clear_speed(.4,lambda v:(True,.01,v))
+        with self.assertRaises(ValueError):
+            select_clear_speed(.4,lambda v:(False,float('nan'),v))
 
 
 if __name__=='__main__':unittest.main()

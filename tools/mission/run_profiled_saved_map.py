@@ -264,7 +264,7 @@ def main():
         with log.open(errors='replace') as f:
             f.seek(offset);chunk=f.read();offset=f.tell()
         for line in chunk.splitlines():
-            if 'DRIVE:' in line or 'STOP:' in line or 'ARMED:' in line or 'LAP' in line:
+            if any(token in line for token in ('DRIVE:','STOP:','ARMED:','LAP','SAFETY HOLD:')):
                 print(line.strip(),flush=True)
         if f'ESTIMATED LAP {args.laps} COMPLETE' in chunk:
             (RUN/'race_result.json').write_text(json.dumps({

@@ -10,6 +10,7 @@ a separate command arbiter, heartbeat braking, physical emergency stop and
 hard actuator limits.
 """
 import csv
+import json
 import math
 import time
 from collections import deque
@@ -32,7 +33,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from pose_uncertainty import planar_covariance, project_uncertainty
-from trajectory_safety import command_swept_collision, stopping_horizon
+from trajectory_safety import command_swept_collision, stopping_horizon, select_clear_speed
 
 
 def stamp_s(stamp):
@@ -135,6 +136,7 @@ class ProfiledAMCLDrive(Node):
         self.last_output_speed = 0.
         self.last_steering = 0.
         self.last_print = 0.
+        self.guard_snapshot = None
 
         self.pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 10)
         self.tf_buffer = Buffer()
@@ -148,6 +150,7 @@ class ProfiledAMCLDrive(Node):
 
         csv_path = Path(str(p('results_file'))).expanduser()
         csv_path.parent.mkdir(parents=True, exist_ok=True)
+        self.guard_path = csv_path.parent/'guard_stop_context.json'
         self.fp = csv_path.open('w', newline='')
         self.writer = csv.writer(self.fp)
         self.writer.writerow(['ros_time', 'state', 'reason', 'index',
@@ -159,7 +162,8 @@ class ProfiledAMCLDrive(Node):
                               'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state',
                               'amcl_across_track_std_m', 'amcl_along_track_std_m',
                               'measured_speed_mps','amcl_stamp_s','amcl_major_std_m',
-                              'uncertainty_speed_cap_mps','stopping_horizon_m'])
+                              'uncertainty_speed_cap_mps','stopping_horizon_m',
+                              'route_speed_cap_mps','local_speed_limited'])
         self.timer = self.create_timer(.05, self.tick)
         self.get_logger().warn(
             f'PROFILED CONTROLLER DISABLED; route={p("waypoints_file")}, log={csv_path}, cap={self.speed_limit}m/s. '
@@ -231,6 +235,9 @@ class ProfiledAMCLDrive(Node):
         if not self.latch:
             self.latch = reason
             self.get_logger().error(f'SAFETY HOLD: {reason}. Requires mission restart.')
+            if self.guard_snapshot is not None:
+                self.guard_path.write_text(json.dumps(
+                    dict(self.guard_snapshot,stop_reason=reason),indent=2)+'\n')
         self.enabled = False
 
     def nomotion_update(self, monotonic_now, pose_age):
@@ -276,6 +283,8 @@ class ProfiledAMCLDrive(Node):
         major_std = float('nan')
         confidence_cap = float('nan')
         horizon = float('nan')
+        route_cap = float('nan')
+        local_speed_limited = False
         index = self.index if self.index is not None else -1
         valid_hits = 0
         speed = steer = 0.
@@ -338,30 +347,44 @@ class ProfiledAMCLDrive(Node):
                         if cte > self.cte_limit:
                             raise ValueError(f'estimated CTE {cte:.3f}m exceeds {self.cte_limit:.3f}m')
                         confidence_cap=uncertainty_speed_cap(self.speed_limit,along_std,pause_limit=self.along_std_limit)
-                        plan = min(self.speed_limit,self.route.speed_at(index),confidence_cap)
-                        lookahead = max(.45, min(.80, self.aim_base + self.aim_gain * plan))
-                        steer = self.route.aim(x, y, yaw, index, lookahead, self.max_steer)
+                        route_cap = min(self.speed_limit,self.route.speed_at(index),confidence_cap)
                         # Compensate scan age through local odometry, then roll
                         # out the actual body-frame steering command. Global
                         # map/AMCL translation error cancels from this geometry.
                         if not all(map(math.isfinite,(self.measured_speed,self.measured_yaw_rate))):
                             raise ValueError('nonfinite measured motion')
                         scan,scan_to_body,scan_age=self.local_scan(ros_now)
-                        guard_velocity=max(self.measured_speed,self.last_output_speed,plan)
                         reaction=max(.35,max(0.,scan_age)+.25)
-                        horizon=stopping_horizon(guard_velocity,reaction)
                         initial_steer=self.last_steering
                         if abs(self.measured_speed)>=.08:
                             initial_steer=float(np.clip(math.atan(
                                 .3302*self.measured_yaw_rate/self.measured_speed),
                                 -self.max_steer,self.max_steer))
-                        blocked, gap, valid_hits = command_swept_collision(
-                            scan.ranges,scan.angle_min,scan.angle_increment,
-                            scan.range_min,scan.range_max,steer,guard_velocity,
-                            initial_steering=initial_steer,scan_to_body=scan_to_body,
-                            reaction=reaction,margin=self.margin)
-                        if blocked:
-                            raise ValueError(f'predicted swept-path obstruction {gap:.3f}m, hits={valid_hits}, stopping_horizon={horizon:.3f}m')
+                        self.guard_snapshot={
+                            'scan_ranges':[float(v) if math.isfinite(v) else None for v in scan.ranges],
+                            'angle_min':scan.angle_min,'angle_increment':scan.angle_increment,
+                            'range_min':scan.range_min,'range_max':scan.range_max,
+                            'scan_to_body':scan_to_body,'reaction':reaction,
+                            'initial_steering':initial_steer,'margin':self.margin,
+                            'measured_speed':self.measured_speed,'previous_speed':self.last_output_speed,
+                            'proposals':[]}
+                        def evaluate(proposal):
+                            lookahead=max(.45,min(.80,self.aim_base+self.aim_gain*proposal))
+                            steering=self.route.aim(x,y,yaw,index,lookahead,self.max_steer)
+                            guard_velocity=max(self.measured_speed,self.last_output_speed,proposal)
+                            stopping_distance=stopping_horizon(guard_velocity,reaction)
+                            blocked,clearance,hits=command_swept_collision(
+                                scan.ranges,scan.angle_min,scan.angle_increment,
+                                scan.range_min,scan.range_max,steering,guard_velocity,
+                                initial_steering=initial_steer,scan_to_body=scan_to_body,
+                                reaction=reaction,margin=self.margin)
+                            self.guard_snapshot['proposals'].append(dict(
+                                speed=proposal,steering=steering,guard_velocity=guard_velocity,
+                                gap=clearance,blocked=blocked,horizon=stopping_distance))
+                            return blocked,clearance,(steering,hits,stopping_distance)
+                        plan,gap,(steer,valid_hits,horizon)=select_clear_speed(
+                            route_cap,evaluate,preferred_gap=self.margin+.08)
+                        local_speed_limited=plan<route_cap-1e-6
                         if self.started and self.index is not None:
                             self.progress += route_progress_delta(self.index,index,self.route.n)
                         if self.last_xy is not None:
@@ -404,7 +427,8 @@ class ProfiledAMCLDrive(Node):
             f'{across_std:.4f}', f'{along_std:.4f}',
             f'{self.measured_speed:.6f}',
             f'{self.pose_stamp:.9f}' if self.pose_stamp is not None else 'nan',
-            f'{major_std:.4f}',f'{confidence_cap:.4f}',f'{horizon:.4f}'])
+            f'{major_std:.4f}',f'{confidence_cap:.4f}',f'{horizon:.4f}',
+            f'{route_cap:.4f}',local_speed_limited])
         if mono-self.last_print > 1.0:
             self.fp.flush()
             self.get_logger().info(
