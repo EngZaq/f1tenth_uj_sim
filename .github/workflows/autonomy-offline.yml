@@ -74,6 +74,7 @@ jobs:
           python tests/test_racing_policy.py
           python tests/test_confidence_policy.py
           python tests/test_pose_uncertainty.py
+          python tests/test_command_swept_collision.py
           python tests/test_localization_summary.py
           python tests/test_amcl_initialization.py
           python tests/test_stationary_probe.py

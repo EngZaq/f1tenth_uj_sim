@@ -31,39 +31,46 @@ This provides additional measurements per metre without demanding that the
 car become perfectly localized along a visually uniform corridor at rest.
 Longitudinal spread above 0.12 m pauses; it is not ignored.
 
-The swept collision check now budgets the complete pose covariance as well.
-For each future route rectangle and measured scan endpoint it finds the
-rectangle's separating-plane normal, propagates `(x,y,yaw)` covariance onto
-that normal and subtracts a three-sigma envelope from the measured gap. It
-also subtracts a bound on the second-order yaw rotation remainder. The base
-0.07 m margin remains in addition. The current-body scan check shares the
-sensor frame, so global pose error cancels there; future route rectangles use
-the covariance budget. Correlations and heading uncertainty are included.
-This is a model-based bound, not calibrated collision probability or a physical
-emergency-stop certificate. Map deformation and missed/occluded obstacles
-remain limitations of the overall stack.
+The runtime collision guard rolls out the requested Ackermann steering in
+body coordinates. It no longer treats future map-route rectangles as the
+commanded vehicle trajectory. That earlier assumption produced a false
+obstruction at the first tight turn: the car and local walls share global
+pose uncertainty, whereas fixed map targets do not. The earlier covariance
+projection function remains available for offline reference-route analysis;
+it is not the runtime braking decision.
 
-The covariance-budgeted guard evaluates a physical stopping tube: reaction
-travel plus `v^2/(2*0.7)` and a 0.10 m sampling buffer, including the first route
-waypoint beyond that interval. Reaction time is at least 0.35 s and grows to
-`scan_age + 0.25 s` for older accepted scans. The previous extra 0.55 m extension
-in addition to the full body overhang could stop the car for an uncertain
-future corner long before it needed to brake. The current tube retains the
-full body, the three-sigma covariance budget and base margin while explicitly
-covering reaction/braking travel. Tests place obstacles inside that stopping
-distance at several speeds and verify stopping. The 0.7 m/s² deceleration is
-still a simulation model assumption requiring hardware-specific verification.
+Each scan is transformed from its acquisition time into the current body
+frame through `fusion_odom`, using TF's advanced time API. The newest scan with
+a complete local transform is selected from a bounded eight-scan buffer and
+must still pass the 0.45 s freshness limit. The map frame does not enter this
+transform. Full AMCL covariance still governs route confidence and speed.
+
+The commanded motion is sampled at <=0.02 m arc intervals through reaction
+travel plus `v^2/(2*0.7)` and a 0.10 m buffer, with the complete body footprint.
+Reaction time is at least 0.35 s and increases to `scan_age + 0.25 s` for older
+accepted scans. Guard speed is the largest of measured, previous commanded and
+planned speed. A rigid-body interpolation bound covers gaps between samples.
+
+The 0.07 m base clearance remains. The tube additionally covers a steering
+transition between measured curvature (EKF yaw rate divided by speed) and the
+requested curvature. For curvature difference `dk`, the centre/heading bound
+is `(s^2/2 + body_corner_radius*s)*abs(dk)`. Three-sigma local speed and yaw-rate
+allowances use 0.01 m/s and 0.01 rad/s respectively over the stopping interval.
+These are explicit simulation assumptions; the model assumes steering stays
+within the initial/requested interval and deceleration is at least 0.7 m/s².
+They require separate actuator/noise measurements before hardware use.
+Occluded/missed obstacles and sensor-model faults remain limitations.
 
 The existing `predicted_body_gap_m` CSV field now reports that conservative,
-uncertainty-adjusted gap. New fields include `amcl_major_std_m` and
+local-motion-tube-adjusted gap. New fields include `amcl_major_std_m` and
 `uncertainty_speed_cap_mps`. The controller parameters are
 `max_across_track_std_m`, `max_along_track_std_m` and
 `max_major_position_std_m`; the former profiled-controller
 `max_position_std_m` scalar parameter is replaced by these explicit bounds.
 
-Tests check global-rotation invariance, invalid/correlated covariance, lateral
-and yaw risks, forward-wall longitudinal risk and the recorded corridor
-uncertainty. Small backward nearest-waypoint corrections now subtract from
+Tests check covariance projection, invalid/correlated matrices and recorded
+corridor uncertainty, plus commanded turns toward/away from walls, braking
+distance, scan motion compensation, steering transition and local noise. Small backward nearest-waypoint corrections now subtract from
 net progress instead of looking like an almost-full-lap jump. Large progress
 and pose discontinuities still stop the controller; estimator jitter cannot
 artificially add laps.
@@ -316,7 +323,7 @@ the explorer's obstacle checks remain responsible for their proposed motions.
 The complete chain still needs real Gym fault-injection tests, including node
 crashes; the pure policy tests are not substitutes for those live tests.
 
-The current route-relative admission and covariance-budgeted swept check are
+The current route-relative admission and commanded local swept check are
 specified above. Tracking-error, hard uncertainty and base swept-margin limits
 remain in force. If a stage cannot satisfy its checks, the run stops and
 records the failed stage. A failed or interrupted racing process cannot report

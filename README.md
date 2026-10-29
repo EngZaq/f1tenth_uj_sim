@@ -12,7 +12,7 @@ stale CLI node listings. A complete live ROS/Gym race remains unverified.
 The second laptop run initialized AMCL and drove, then exposed a stricter pause
 recovery bound than its normal driving bound. Recovery now uses four fresh,
 stationary observations. Later full tests led to route-relative confidence,
-uncertainty-based speed reduction and covariance-budgeted swept checks. A separate full
+uncertainty-based speed reduction and commanded-motion local swept checks. A separate full
 ROS/Gym CI workflow exercises the entire mission and retains each attempt.
 See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
 review branch, run command, stopping behavior, evidence and remaining limits.

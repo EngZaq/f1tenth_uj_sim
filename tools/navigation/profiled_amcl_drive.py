@@ -12,6 +12,7 @@ hard actuator limits.
 import csv
 import math
 import time
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -31,7 +32,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from pose_uncertainty import planar_covariance, project_uncertainty
-from trajectory_safety import swept_path_collision, stopping_horizon
+from trajectory_safety import command_swept_collision, stopping_horizon
 
 
 def stamp_s(stamp):
@@ -118,8 +119,10 @@ class ProfiledAMCLDrive(Node):
         self.scan = None
         self.scan_stamp = None
         self.scan_seen = None
+        self.scans = deque(maxlen=8)
         self.odom_seen = None
         self.measured_speed = 0.
+        self.measured_yaw_rate = 0.
         self.no_motion_pending = None
         self.no_motion_at = 0.
         self.no_motion_count = 0
@@ -188,13 +191,37 @@ class ProfiledAMCLDrive(Node):
         self.pose_seen = time.monotonic()
 
     def on_scan(self, msg):
+        if msg.header.frame_id != 'fusion_laser':
+            self.hold('unexpected LiDAR frame')
+            return
         self.scan = msg
         self.scan_stamp = stamp_s(msg.header.stamp)
         self.scan_seen = time.monotonic()
+        self.scans.append(msg)
 
     def on_odom(self, msg):
         self.odom_seen = time.monotonic()
         self.measured_speed = float(msg.twist.twist.linear.x)
+        self.measured_yaw_rate = float(msg.twist.twist.angular.z)
+
+    def local_scan(self,ros_now):
+        # A newly arrived scan may precede its EKF transform by one callback.
+        # Use the newest transformable scan within the same freshness limit.
+        for scan in reversed(self.scans):
+            scan_age=ros_now-stamp_s(scan.header.stamp)
+            if not 0<=scan_age<=self.scan_limit:
+                continue
+            source_time=Time.from_msg(scan.header.stamp)
+            if not self.tf_buffer.can_transform_full(
+                    'fusion_base',Time(),'fusion_laser',source_time,'fusion_odom'):
+                continue
+            transform=self.tf_buffer.lookup_transform_full(
+                'fusion_base',Time(),'fusion_laser',source_time,'fusion_odom')
+            if not -.1<=ros_now-stamp_s(transform.header.stamp)<=self.odom_limit:
+                continue
+            t=transform.transform
+            return scan,(t.translation.x,t.translation.y,yaw_of(t.rotation)),scan_age
+        raise ValueError('no fresh scan with local odometry transform')
 
     def on_collision(self, msg):
         if msg.data:
@@ -276,7 +303,7 @@ class ProfiledAMCLDrive(Node):
             else:
                 pos_std = math.sqrt(max(cov[0], cov[7]))
                 # Distinguish corridor-normal uncertainty from ambiguity along
-                # the corridor. The full matrix also enters the swept guard.
+                # the corridor. Collision prediction uses local motion below.
                 px0 = self.pose.pose.position.x
                 py0 = self.pose.pose.position.y
                 diagnostic_idx = int(np.argmin(
@@ -314,17 +341,25 @@ class ProfiledAMCLDrive(Node):
                         plan = min(self.speed_limit,self.route.speed_at(index),confidence_cap)
                         lookahead = max(.45, min(.80, self.aim_base + self.aim_gain * plan))
                         steer = self.route.aim(x, y, yaw, index, lookahead, self.max_steer)
-                        # Evaluate measured laser endpoints against *predicted
-                        # vehicle body positions* along the map-frame route.
+                        # Compensate scan age through local odometry, then roll
+                        # out the actual body-frame steering command. Global
+                        # map/AMCL translation error cancels from this geometry.
+                        if not all(map(math.isfinite,(self.measured_speed,self.measured_yaw_rate))):
+                            raise ValueError('nonfinite measured motion')
+                        scan,scan_to_body,scan_age=self.local_scan(ros_now)
                         guard_velocity=max(self.measured_speed,self.last_output_speed,plan)
                         reaction=max(.35,max(0.,scan_age)+.25)
                         horizon=stopping_horizon(guard_velocity,reaction)
-                        blocked, gap, valid_hits = swept_path_collision(
-                            self.scan.ranges, self.scan.angle_min,
-                            self.scan.angle_increment, self.scan.range_min,
-                            self.scan.range_max, self.route.data, (x, y, yaw),
-                            index,guard_velocity,reaction=reaction,
-                            margin=self.margin,pose_covariance=covariance)
+                        initial_steer=self.last_steering
+                        if abs(self.measured_speed)>=.08:
+                            initial_steer=float(np.clip(math.atan(
+                                .3302*self.measured_yaw_rate/self.measured_speed),
+                                -self.max_steer,self.max_steer))
+                        blocked, gap, valid_hits = command_swept_collision(
+                            scan.ranges,scan.angle_min,scan.angle_increment,
+                            scan.range_min,scan.range_max,steer,guard_velocity,
+                            initial_steering=initial_steer,scan_to_body=scan_to_body,
+                            reaction=reaction,margin=self.margin)
                         if blocked:
                             raise ValueError(f'predicted swept-path obstruction {gap:.3f}m, hits={valid_hits}, stopping_horizon={horizon:.3f}m')
                         if self.started and self.index is not None:
