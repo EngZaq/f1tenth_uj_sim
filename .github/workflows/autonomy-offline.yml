@@ -40,6 +40,7 @@ jobs:
         run: |
           python tests/test_racing_policy.py
           python tests/test_confidence_policy.py
+          python tests/test_localization_summary.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection
         run: python tests/test_optimizer_cli.py
