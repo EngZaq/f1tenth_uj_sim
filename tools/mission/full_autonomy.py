@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from sim_geometry import LASER
+from mission.ros_graph import (LOCALIZATION_CONFLICTS, node_list_args,
+                               topic_info_args, wait_for_nodes_absent)
 
 ROOT = Path(__file__).resolve().parents[2]
 MISSION = ROOT/'tools/mission'
@@ -125,22 +127,28 @@ class Mission:
                     archive.write(file,file.relative_to(self.folder))
         return target
 
+    def stream_log(self, name, offset):
+        with (self.folder/(name+'.log')).open(errors='replace') as fp:
+            fp.seek(offset)
+            chunk = fp.read()
+            offset = fp.tell()
+        if chunk:
+            print(chunk, end='', flush=True)
+        return offset
+
 
 def run_mission(ctx, args):
     ctx.enter('PREFLIGHT')
     if not args.autonomous:
         input('Press ENTER to start exploration and the automatic stage sequence: ')
-    nodes = ctx.command(['ros2','node','list'],timeout=6).stdout.splitlines()
-    if any(name in nodes for name in ('/amcl','/slam_toolbox','/simulation_drive_watchdog',
-                                     '/fusion_scan_relay','/profiled_amcl_drive',
-                                     '/fusion_map_server','/ekf_filter_node','/sim_vesc_imu',
-                                     '/mission_first_lap','/uj_exploration_controller')):
+    nodes = ctx.command(node_list_args(),timeout=6).stdout.splitlines()
+    if any(name in nodes for name in (*LOCALIZATION_CONFLICTS,'/simulation_drive_watchdog')):
         raise RuntimeError('A previous autonomy stack is running; stop it normally first')
-    drive = ctx.command(['ros2','topic','info','/drive'],timeout=6,check=False)
+    drive = ctx.command(topic_info_args('/drive'),timeout=6,check=False)
     if 'Publisher count: 0' not in drive.stdout and drive.returncode==0:
         raise RuntimeError('Another /drive publisher already owns actuation')
     def simulator_ready():
-        info = ctx.command(['ros2','topic','info','/ego_racecar/odom'],timeout=5,check=False)
+        info = ctx.command(topic_info_args('/ego_racecar/odom'),timeout=5,check=False)
         return info.returncode==0 and 'Publisher count: 1' in info.stdout
     if not simulator_ready():
         if not args.start_simulator:
@@ -197,6 +205,8 @@ def run_mission(ctx, args):
     ctx.command(['python3',ROOT/'tools/planning/prepare_vehicle_route.py',
                  prefix.with_suffix('.yaml'),oriented,'--out',ctx.folder/'new_track_body_optimized.csv',
                  '--report',ctx.folder/'route_preparation.json'],timeout=180)
+    ctx.enter('WAITING_FOR_LOCALIZATION_HANDOFF')
+    wait_for_nodes_absent(ctx.command, output=ctx.folder/'mapping_handoff.json', check=ctx.check)
     ctx.enter('LOCALIZING_AND_RACING')
     ctx.start('race',['python3','-u',MISSION/'run_profiled_saved_map.py',
                      '--mission-dir',ctx.folder,'--autonomous','--laps',args.laps,
@@ -207,13 +217,14 @@ def run_mission(ctx, args):
         ctx.check(ignore=('race',))
         if time.monotonic()>deadline:
             raise RuntimeError('Racing stage timed out')
-        with (ctx.folder/'race.log').open(errors='replace') as fp:
-            fp.seek(offset);chunk=fp.read();offset=fp.tell()
-        if chunk:
-            print(chunk,end='',flush=True)
+        offset = ctx.stream_log('race',offset)
         time.sleep(.3)
+    # A fast child failure can happen between loop iterations. Always drain its
+    # final output, so the operator sees the actual error rather than a filename.
+    ctx.stream_log('race',offset)
     if ctx.jobs['race'].returncode:
-        raise RuntimeError('Racing stopped; see '+str(ctx.folder/'race.log'))
+        tail = (ctx.folder/'race.log').read_text(errors='replace')[-3000:].strip()
+        raise RuntimeError('Racing stopped: '+tail+'\nLog: '+str(ctx.folder/'race.log'))
     ctx.check(ignore=('race',))
     results = list(ctx.folder.glob('race_*/race_result.json'))
     if len(results)!=1 or json.loads(results[0].read_text()).get('completed_estimated_laps')!=args.laps:

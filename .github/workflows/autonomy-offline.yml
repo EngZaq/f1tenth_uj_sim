@@ -9,6 +9,7 @@ on:
       - "tools/mission/run_profiled_saved_map.py"
       - "tools/mission/mission_amcl.launch.py"
       - "tools/mission/full_autonomy.py"
+      - "tools/mission/ros_graph.py"
       - "tools/mission/mission_slam.launch.py"
       - "tools/mission/mission_explore.py"
       - "tools/mission/map_scan_seed.py"
@@ -48,6 +49,7 @@ jobs:
             tools/planning/optimize_vehicle_route.py \
             tools/mission/run_profiled_saved_map.py \
             tools/mission/full_autonomy.py \
+            tools/mission/ros_graph.py \
             tools/mission/mission_slam.launch.py \
             tools/mission/mission_explore.py \
             tools/mission/map_scan_seed.py \
@@ -69,7 +71,37 @@ jobs:
           python tests/test_amcl_initialization.py
           python tests/test_stationary_probe.py
           python tests/test_full_autonomy.py
+          python tests/test_ros_graph_handoff.py
           python tests/test_sim_localization_audit_node.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection
         run: python tests/test_optimizer_cli.py
+
+  ros-graph-handoff:
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base-jammy
+    timeout-minutes: 15
+    env:
+      ROS_DOMAIN_ID: "76"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      ROS_HANDOFF_EVIDENCE: /tmp/ros-handoff-evidence
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the same DDS implementation as the laptop
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ros-humble-rmw-cyclonedds-cpp
+      - name: Reject live SLAM and accept its clean departure with real ROS
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 tests/ros_graph_handoff_live.py
+      - name: Preserve live graph observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-handoff-evidence
+          path: /tmp/ros-handoff-evidence
+          if-no-files-found: warn

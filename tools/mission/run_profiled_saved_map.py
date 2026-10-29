@@ -20,6 +20,7 @@ from pathlib import Path
 import yaml
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from sim_geometry import LASER
+from mission.ros_graph import topic_info_args, wait_for_nodes_absent
 
 ROOT=Path(__file__).resolve().parents[2]
 MISSION=ROOT/'tools/mission'
@@ -148,16 +149,14 @@ def main():
         required.append(ROOT/'tools/localization/stationary_localization_probe.py')
     for f in required:
         if not f.exists():raise RuntimeError(f'Missing {f}')
-    sim=call(['ros2','topic','info','/ego_racecar/odom'],check=False)
+    RUN.mkdir(parents=True,exist_ok=True)
+    wait_for_nodes_absent(call,output=RUN/'localization_handoff.json')
+    sim=call(topic_info_args('/ego_racecar/odom'),check=False)
     if sim.returncode or 'Publisher count: 1' not in sim.stdout:
         raise RuntimeError('Simulator is not running. Start zsh scripts/run_sim.zsh in Terminal 1')
-    drive=call(['ros2','topic','info',DRIVE_TOPIC],check=False)
+    drive=call(topic_info_args(DRIVE_TOPIC),check=False)
     if drive.returncode==0 and 'Publisher count: 0' not in drive.stdout:
         raise RuntimeError(f'Other drive publisher exists. Stop prior autonomous controllers!\n{drive.stdout}')
-    for node in ('/amcl','/slam_toolbox'):
-        nodes=call(['ros2','node','list'],check=False).stdout
-        if node in nodes.splitlines(): raise RuntimeError(f'{node} already running; stop previous stack first')
-    RUN.mkdir(parents=True,exist_ok=True)
     print('\n===== PROFILED SAVED-MAP LAP (SIMULATION ONLY / ENGINEERING BRANCH) =====',flush=True)
     print('No SLAM exploration; no old finish pose assumed.\nMap:',MAP,'\nRoute:',PATH,'\nRun log:',RUN,flush=True)
     print('Running conservative vehicle-body route preflight (0.15m nominal margin)...',flush=True)

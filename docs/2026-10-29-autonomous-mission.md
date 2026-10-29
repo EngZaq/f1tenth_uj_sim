@@ -1,9 +1,55 @@
 # Automatic simulation mission and the measured laser correction
 
 The complete mission is now connected behind one command. This is an
-experimental simulation workflow; a successful end-to-end ROS/Gym run has not
-yet been demonstrated with these changes. Earlier tests remain evidence for
-their individual stages, not proof of the new integrated mission.
+experimental simulation workflow. The first uploaded integrated run completed
+exploration, map saving and route preparation, then stopped before localization
+on a stale SLAM-node graph check. The correction is described below. A complete
+end-to-end ROS/Gym race has not yet been demonstrated with these changes.
+
+## First integrated run: SLAM-to-AMCL handoff correction
+
+The uploaded run `autonomous_20261029_164139_586206` explored 34.212 m over
+227.07 seconds, saved a 220 x 296 map at 0.05 m resolution and generated a
+374-waypoint route. The route passed the existing nominal body/steering checks:
+0.250 m clearance at waypoints, approximately 0.224 m between waypoints and
+23.74 degrees peak required steering. These are map-geometry measurements.
+
+`slam.log` reports that the SLAM child process finished cleanly. Nevertheless,
+the racing launcher's immediate `ros2 node list` check still returned
+`/slam_toolbox`, producing `RESUME STOPPED: /slam_toolbox already running`.
+No AMCL or racing controller was started in this attempt. This evidence points
+to stale CLI-daemon/discovery state during the stage handoff, not a demonstrated
+failure of the newly generated route.
+
+The parent now enters `WAITING_FOR_LOCALIZATION_HANDOFF` and verifies departure
+with `ros2 node list --no-daemon --spin-time 1.0`, allowing up to 30 seconds and
+requiring two consecutive clear observations. The child performs its own fresh
+check before starting localization. Topic-ownership queries also bypass the
+daemon. A running conflicting stack still blocks startup, and a failed query
+cannot count as an empty graph. The watchdog keeps commanding zero while no
+controller is active. Nothing resets or kills an unrelated process.
+
+The parent also drains the final race log after the child exits and includes
+its error in the terminal message. Fast child exits previously hid that error
+behind a generic filename. `mapping_handoff.json` and
+`race_*/localization_handoff.json` retain the discovery observations.
+
+The offline regression suite covers delayed departure, transient empty graph
+observations, a genuinely active SLAM node, discovery errors/timeouts and fast
+child failure reporting. A separate CI job uses ROS Humble with CycloneDDS to
+warm daemon discovery with a real `slam_toolbox`-named node, reject it while
+alive, stop it and verify the fresh handoff succeeds. This checks ROS graph
+ownership; it does not run SLAM, AMCL, Gym or the complete driving mission.
+
+An additional ideal kinematic replay on this uploaded route completed three
+laps with peak CTE 0.04394 m using the current policy and 0.40 m/s cap. That
+replay assumes perfect pose and omits sensor/actuator dynamics, so it is not
+evidence of actual localization/tracking performance. Source hashes and
+measurements are saved in [handoff evidence](evidence/slam_amcl_handoff_findings.json).
+
+ROS Humble CLI implementation references:
+[fresh/daemon node strategy](https://github.com/ros2/ros2cli/blob/humble/ros2cli/ros2cli/node/strategy.py)
+and [topic-info strategy](https://github.com/ros2/ros2cli/blob/humble/ros2topic/ros2topic/verb/info.py).
 
 ## The latest recording found a concrete mismatch
 
@@ -85,6 +131,7 @@ zsh scripts/run_full_autonomy.zsh --laps 3 --speed-cap 0.40 --explore-speed 0.18
 | Exploration | Use the LiDAR explorer; detect an estimated return to the start, stop exploring and hold zero speed |
 | Map save | Save a new YAML/PGM, capture the current SLAM-frame pose and stop SLAM before AMCL starts |
 | Planning | Extract and orient a closed centerline, try periodic smoothing candidates, optimize and check full-body clearance/steering; reject all-invalid candidates |
+| Graph handoff | Verify departure of mapping nodes through bounded fresh discovery before starting localization |
 | Localization | Restart local sensor/EKF chain, fit current LiDAR against this new map and send an explicit covariance seed on `/fusion/initialpose` |
 | Readiness | Wait for four distinct fresh AMCL estimates within the existing position/yaw uncertainty gates; time out after 45 seconds if readiness fails |
 | Racing | Start the profiled controller on the new route, automatically arm, count the requested estimated-pose laps and retain its fault gates |
@@ -140,6 +187,7 @@ hardware readiness. Passive truth is retained for evaluating those claims.
   route fixture and writes its audited output; rejection handling is tested.
 - Standalone swept collision check, source compilation and zsh syntax checks.
 
-ROS 2/Gym are not installed in this editing environment. No new mapping lap,
-live watchdog stop or end-to-end race has been executed here. The next laptop
-run exercises the complete workflow rather than another stationary diagnostic.
+ROS 2/Gym are not installed in this editing environment. The uploaded laptop
+run supplies real exploration/mapping/planning evidence. The separate ROS CI
+job checks graph handoff only; no live watchdog stop or end-to-end race has been
+executed here. The next laptop run exercises the corrected complete workflow.

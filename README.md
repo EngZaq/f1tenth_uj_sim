@@ -6,7 +6,9 @@ Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
 automatic exploration, fresh mapping, route preparation, AMCL startup and three
 estimated-pose laps. The shared laser mounting is corrected to the measured
 0.100 m, and a separate command watchdog owns `/drive`. This integrated workflow
-has offline verification but has not yet completed a live ROS/Gym mission.
+completed exploration, fresh mapping and route preparation in the first laptop
+run. The SLAM-to-AMCL handoff now uses bounded fresh ROS graph checks to avoid
+stale CLI node listings. A complete live ROS/Gym race remains unverified.
 See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
 review branch, run command, stopping behavior, evidence and remaining limits.
 

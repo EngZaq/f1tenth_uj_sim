@@ -124,9 +124,10 @@ class ReadyTest(unittest.TestCase):
 
 
 class FakeMission(FULL.Mission):
-    def __init__(self,folder,fail_plan=False,record=True):
+    def __init__(self,folder,fail_plan=False,record=True,race_exit=0):
         super().__init__(folder)
         self.started=[];self.called=[];self.fail_plan=fail_plan;self.record=record
+        self.race_exit=race_exit
     def command(self,args,**kwargs):
         a=[str(x) for x in args];self.called.append(a);joined=' '.join(a)
         if self.fail_plan and 'extract_robust_centerline.py' in joined:
@@ -139,7 +140,9 @@ class FakeMission(FULL.Mission):
         return NS(returncode=0,stdout=out,stderr='')
     def start(self,name,args):
         a=[str(x) for x in args];self.started.append((name,a))
-        self.jobs[name]=NS(poll=lambda:0 if name=='race' else None,returncode=0)
+        self.jobs[name]=NS(poll=lambda:self.race_exit if name=='race' else None,returncode=self.race_exit)
+        if name=='race':
+            (self.folder/'race.log').write_text('RESUME STOPPED: injected child handoff failure\n' if self.race_exit else 'lap log\n')
         if name=='lap_watcher':
             (self.folder/'lap_pose.json').write_text(json.dumps({'distance_odom_m':37.6}))
         if name=='race' and self.record:
@@ -181,7 +184,8 @@ class SequenceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ctx=self.execute(Path(tmp)/'mission')
             self.assertEqual([e['stage'] for e in ctx.events],
-                ['PREFLIGHT','EXPLORING','SAVING_MAP','PLANNING','LOCALIZING_AND_RACING','COMPLETED_ESTIMATED_LAPS'])
+                ['PREFLIGHT','EXPLORING','SAVING_MAP','PLANNING','WAITING_FOR_LOCALIZATION_HANDOFF',
+                 'LOCALIZING_AND_RACING','COMPLETED_ESTIMATED_LAPS'])
             start=dict(ctx.started)
             self.assertIn('/drive:=/mission/drive',start['explorer'])
             self.assertIn('/mission/drive',start['race'])
@@ -189,6 +193,7 @@ class SequenceTest(unittest.TestCase):
             self.assertNotIn('slam',ctx.jobs)
             self.assertEqual(json.loads((ctx.folder/'laser_geometry.json').read_text()),LASER)
             self.assertTrue((ctx.folder/'autonomy_summary.txt').exists())
+            self.assertTrue(json.loads((ctx.folder/'mapping_handoff.json').read_text())['ready'])
 
     def test_failed_planning_cannot_start_racing(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -201,6 +206,14 @@ class SequenceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(RuntimeError,'completed-lap record'):
                 self.execute(Path(tmp)/'mission',record=False)
+
+    def test_fast_child_failure_is_drained_and_explained(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx=FakeMission(Path(tmp)/'mission',race_exit=1)
+            output=io.StringIO()
+            with contextlib.redirect_stdout(output), self.assertRaisesRegex(RuntimeError,'injected child handoff failure'):
+                FULL.run_mission(ctx,NS(autonomous=True,start_simulator=True,laps=3,speed_cap=.4,explore_speed=.18))
+            self.assertIn('RESUME STOPPED: injected child handoff failure',output.getvalue())
 
 
 class RoutePreparationTest(unittest.TestCase):
