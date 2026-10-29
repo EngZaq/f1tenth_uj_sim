@@ -141,7 +141,8 @@ class ProfiledAMCLDrive(Node):
                               'steering_deg', 'amcl_age_s', 'scan_age_s',
                               'odom_age_s', 'predicted_body_gap_m',
                               'valid_scan_hits', 'no_motion_count',
-                              'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state'])
+                              'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state',
+                              'amcl_across_track_std_m', 'amcl_along_track_std_m'])
         self.timer = self.create_timer(.05, self.tick)
         self.get_logger().warn(
             f'PROFILED CONTROLLER DISABLED; profile={csv_path}, cap={self.speed_limit}m/s. '
@@ -229,6 +230,7 @@ class ProfiledAMCLDrive(Node):
         x = y = yaw = cte = plan = gap = float('nan')
         pos_std = yaw_std = float('nan')
         confidence_state = 'NOT_EVALUATED'
+        across_std = along_std = float('nan')
         index = self.index if self.index is not None else -1
         valid_hits = 0
         speed = steer = 0.
@@ -255,6 +257,21 @@ class ProfiledAMCLDrive(Node):
             else:
                 pos_std = math.sqrt(max(cov[0], cov[7]))
                 yaw_std = math.sqrt(cov[35])
+                # Diagnostic only: world-axis covariance conflates along-track
+                # and lateral uncertainty. Project Pxy onto route tangent/normal.
+                # Keep the original hard confidence gates until validated.
+                px0 = self.pose.pose.position.x
+                py0 = self.pose.pose.position.y
+                diagnostic_idx = int(np.argmin(
+                    np.sum((self.route.xy-np.array([px0,py0]))**2,axis=1)))
+                path_yaw = float(self.route.data[diagnostic_idx,3])
+                nx, ny = -math.sin(path_yaw), math.cos(path_yaw)
+                tx, ty = math.cos(path_yaw), math.sin(path_yaw)
+                cxy = .5*(cov[1] + cov[6])
+                lateral_var = nx*nx*cov[0] + 2*nx*ny*cxy + ny*ny*cov[7]
+                tangent_var = tx*tx*cov[0] + 2*tx*ty*cxy + ty*ty*cov[7]
+                across_std = math.sqrt(max(0.,lateral_var))
+                along_std = math.sqrt(max(0.,tangent_var))
                 confidence_state, confidence_detail = self.confidence.check(
                     mono, self.pose_stamp, pos_std, yaw_std, self.measured_speed)
                 if confidence_state == 'FAULT':
@@ -336,13 +353,15 @@ class ProfiledAMCLDrive(Node):
             f'{math.degrees(steer):.3f}', f'{pose_age:.3f}',
             f'{scan_age:.3f}', f'{odom_age:.3f}', f'{gap:.3f}',
             valid_hits, self.no_motion_count,
-            f'{pos_std:.4f}', f'{math.degrees(yaw_std):.3f}', confidence_state])
+            f'{pos_std:.4f}', f'{math.degrees(yaw_std):.3f}', confidence_state,
+            f'{across_std:.4f}', f'{along_std:.4f}'])
         if mono-self.last_print > 1.0:
             self.fp.flush()
             self.get_logger().info(
                 f'{state}: {reason} | v={speed:.2f}m/s planned={plan:.2f} '
                 f'CTE={cte:.3f}m body_gap={gap:.3f}m '
-                f'pos_std={pos_std:.3f}m yaw_std={math.degrees(yaw_std):.1f}deg '
+                f'pos_std={pos_std:.3f}m lateral_std={across_std:.3f}m '
+                f'longitudinal_std={along_std:.3f}m yaw_std={math.degrees(yaw_std):.1f}deg '
                 f'AMCL={pose_age:.2f}s progress={self.progress}/{self.route.n} '
                 f'lap={self.laps}')
             self.last_print = mono
