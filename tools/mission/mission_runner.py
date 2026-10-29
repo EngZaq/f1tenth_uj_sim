@@ -181,7 +181,7 @@ def main():
     extract=run(['python3',ROOT/'tools/planning/extract_robust_centerline.py',
                  MAP_PREFIX.with_suffix('.yaml'),'--out',PATH_PREFIX,
                  '--step','0.10','--max-speed','0.35',
-                 '--expected-length',str(measured_lap['distance_odom_m'])],timeout=70)
+                 '--expected-length',str(measured_lap.get('estimated_lap_length_m',measured_lap['distance_odom_m']))],timeout=70)
     print(extract.stdout[-2000:])
     raw=LOGDIR/'new_track_centerline.csv'
     oriented=LOGDIR/'new_track_mission_forward.csv'

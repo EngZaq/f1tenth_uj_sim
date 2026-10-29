@@ -69,6 +69,10 @@ The actual rejected CI mask and the prior passing laptop mask are retained in
 `tests/fixtures/map_coverage_recordings.json`. Tests verify the difference and
 that unknown cells cannot silently become free. The map-coverage decision is
 included in `lap_pose.json` for each new run.
+If coverage requires another mapping lap, total travel remains in
+`distance_odom_m`, while `estimated_lap_length_m` preserves the first return's
+single-lap length. Route extraction uses the latter so extra exploration does
+not incorrectly double the expected circuit length.
 
 ## First integrated run: SLAM-to-AMCL handoff correction
 

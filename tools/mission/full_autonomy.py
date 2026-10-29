@@ -198,7 +198,7 @@ def run_mission(ctx, args):
     lap = json.loads(lap_file.read_text())
     ctx.command(['python3',ROOT/'tools/planning/extract_robust_centerline.py',
                  prefix.with_suffix('.yaml'),'--out',prefix,'--step','.10','--max-speed',args.speed_cap,
-                 '--expected-length',lap['distance_odom_m']],timeout=90)
+                 '--expected-length',lap.get('estimated_lap_length_m',lap['distance_odom_m'])],timeout=90)
     oriented = ctx.folder/'new_track_mission_forward.csv'
     ctx.command(['python3',MISSION/'orient_mission_centerline.py',
                  ctx.folder/'new_track_centerline.csv',lap_file,oriented],timeout=25)

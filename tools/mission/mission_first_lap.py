@@ -43,6 +43,7 @@ class FirstLap(Node):
         self.distance = 0.0
         self.left_start = False
         self.complete = False
+        self.first_return_distance = None
         self.coverage = {'closed':False}
         self.map_seen = None
         self.tf_buffer = Buffer()
@@ -100,6 +101,8 @@ class FirstLap(Node):
                 radius <= float(self.get_parameter('return_distance_m').value) and
                 heading_error <= float(self.get_parameter('heading_tolerance_deg').value)):
             return
+        if self.first_return_distance is None:
+            self.first_return_distance = self.distance
         if (not self.coverage['closed'] or self.map_seen is None or now-self.map_seen>8.):
             # An odometry return is only a hypothesis of a complete map. Keep
             # exploring until the observed 0.30 m corridor actually closes.
@@ -113,6 +116,7 @@ class FirstLap(Node):
         record = {'finish_x':float(m.translation.x), 'finish_y':float(m.translation.y),
                   'finish_yaw':yaw(m.rotation), 'frame_id':'slam_map',
                   'distance_odom_m':round(self.distance,3),
+                  'estimated_lap_length_m':round(self.first_return_distance,3),
                   'duration_s':round(elapsed,2),
                   'return_distance_odom_m':round(radius,3),
                   'return_yaw_error_deg':round(heading_error,2),

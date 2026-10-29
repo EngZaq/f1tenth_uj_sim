@@ -124,10 +124,11 @@ class ReadyTest(unittest.TestCase):
 
 
 class FakeMission(FULL.Mission):
-    def __init__(self,folder,fail_plan=False,record=True,race_exit=0):
+    def __init__(self,folder,fail_plan=False,record=True,race_exit=0,mapping_laps=1):
         super().__init__(folder)
         self.started=[];self.called=[];self.fail_plan=fail_plan;self.record=record
         self.race_exit=race_exit
+        self.mapping_laps=mapping_laps
     def command(self,args,**kwargs):
         a=[str(x) for x in args];self.called.append(a);joined=' '.join(a)
         if self.fail_plan and 'extract_robust_centerline.py' in joined:
@@ -144,7 +145,8 @@ class FakeMission(FULL.Mission):
         if name=='race':
             (self.folder/'race.log').write_text('RESUME STOPPED: injected child handoff failure\n' if self.race_exit else 'lap log\n')
         if name=='lap_watcher':
-            (self.folder/'lap_pose.json').write_text(json.dumps({'distance_odom_m':37.6}))
+            (self.folder/'lap_pose.json').write_text(json.dumps({
+                'distance_odom_m':37.6*self.mapping_laps,'estimated_lap_length_m':37.6}))
         if name=='race' and self.record:
             target=self.folder/'race_fixture';target.mkdir()
             (target/'race_result.json').write_text(json.dumps({'completed_estimated_laps':3}))
@@ -206,6 +208,12 @@ class SequenceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(RuntimeError,'completed-lap record'):
                 self.execute(Path(tmp)/'mission',record=False)
+
+    def test_additional_mapping_lap_does_not_double_expected_route_length(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx=self.execute(Path(tmp)/'mission',mapping_laps=2)
+            extract=next(a for a in ctx.called if 'extract_robust_centerline.py' in ' '.join(a))
+            self.assertEqual(extract[extract.index('--expected-length')+1],'37.6')
 
     def test_fast_child_failure_is_drained_and_explained(self):
         with tempfile.TemporaryDirectory() as tmp:
