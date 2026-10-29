@@ -53,6 +53,13 @@ jobs:
           export F1TENTH_SIM_WS="$GITHUB_WORKSPACE/.ci_sim_ws"
           timeout --signal=INT --kill-after=30s 20m \
             zsh scripts/run_full_autonomy.zsh --laps 3 2>&1 | tee full_gym_console.log
+      - name: Summarize and check recorded physical mission evidence
+        if: always()
+        run: |
+          if [[ -f .ci_sim_ws/.venv/bin/activate ]]; then
+            source .ci_sim_ws/.venv/bin/activate
+            python3 -u .github/scripts/report_gym_ci.py
+          fi
       - name: Retain complete mission evidence on success or failure
         if: always()
         uses: actions/upload-artifact@v4

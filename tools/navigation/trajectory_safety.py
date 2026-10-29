@@ -11,9 +11,9 @@ from sim_geometry import LASER, FUSION_LASER, BODY_FRONT, BODY_REAR, BODY_HALFWI
 from navigation.pose_uncertainty import planar_covariance
 
 
-def stopping_horizon(velocity, reaction=.35, deceleration=.7, buffer=.10):
+def stopping_horizon(velocity, reaction=.35, deceleration=.7, buffer=.02):
     if (not all(math.isfinite(v) for v in (velocity,reaction,deceleration,buffer)) or
-            reaction<0 or deceleration<=0 or buffer<.10):
+            reaction<0 or deceleration<=0 or buffer<.02):
         raise ValueError('Invalid stopping-horizon inputs')
     speed=max(0.,float(velocity))
     return speed*reaction+speed*speed/(2*deceleration)+buffer
@@ -50,7 +50,7 @@ def command_swept_collision(ranges, angle_min, angle_increment, range_min, range
                             scan_to_body=FUSION_LASER,
                             wheelbase=.3302,front=BODY_FRONT,rear=BODY_REAR,halfwidth=BODY_HALFWIDTH,
                             margin=.07,deceleration=.7,reaction=.35,
-                            speed_std=.01,yaw_rate_std=.01):
+                            speed_std=.01,yaw_rate_std=.01,horizon_buffer=.02):
     """Check a commanded Ackermann stopping tube against local scan endpoints.
 
     scan_to_body maps laser-at-acquisition into body-at-rollout-start, normally
@@ -69,7 +69,7 @@ def command_swept_collision(ranges, angle_min, angle_increment, range_min, range
             rear>=front or halfwidth<=0 or margin<=0 or speed_std<0 or
             yaw_rate_std<0 or max(abs(steering),abs(initial_steering))>.419):
         raise ValueError('Invalid local swept-tube inputs')
-    horizon=stopping_horizon(velocity,reaction,deceleration)
+    horizon=stopping_horizon(velocity,reaction,deceleration,buffer=horizon_buffer)
     ranges=np.asarray(ranges,dtype=float)
     if ranges.ndim!=1 or ranges.size<50:
         raise ValueError('Invalid LiDAR input shape')
@@ -151,7 +151,7 @@ def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_ma
     # The rectangle already includes the full front/rear overhang. Check the
     # distance travelled during reaction and braking plus a sampling buffer;
     # do not count another vehicle-length-scale extension as stopping distance.
-    horizon = stopping_horizon(speed,reaction,deceleration)
+    horizon = stopping_horizon(speed,reaction,deceleration,buffer=.10)
 
     base_s = float(route[nearest_idx, 0])
     closed_length = float(route[-1,0])+float(np.linalg.norm(route[-1,1:3]-route[0,1:3]))

@@ -69,6 +69,29 @@ the pinned simulator's 3.2 rad/s steering slew. It checks full net progress and
 a maximum estimated CTE below 0.07 m. Ideal-pose model tests do not replace the
 AMCL/local-guard integration run or certify other speeds and tracks.
 
+## Stopping tube: sampling buffer versus physical travel
+
+The later recorded scan at run 40936432291 showed a second low-speed issue.
+At about 0.05 m/s, 0.35 s reaction plus braking at 0.7 m/s² requires roughly
+0.02 m travel. Adding a fixed 0.10 m extension made the controller predict
+about 0.12 m travel even while creeping. The full body and a rigid-body
+interpolation allowance were already present in the guard.
+
+The runtime extra buffer is now one 0.02 m arc-sampling interval. Reaction
+travel, braking distance, full body geometry, steering-transition envelope,
+local sensor/motion allowances and the 0.07 m hard clearance remain. Guard
+speed still cannot drop below measured or previous commanded speed. A larger
+requested buffer remains supported; values below 0.02 m are refused. The
+historical offline fixed-route analysis retains its original 0.10 m buffer.
+
+Replaying the measured scan and local transform gives about 0.093 m adjusted
+clearance for the slow proposal with the 0.02 m buffer; the old 0.10 m buffer
+gives about 0.068 m and rejects it. The 0.40 m/s proposal remains blocked with
+the revised buffer. These observations are retained as regression data in
+`tests/fixtures/commanded_corner_stop.json`. They support the sampling change,
+not a claim that a whole mission has completed. Full ROS/Gym acceptance is
+still required after this change.
+
 ## Current runtime uncertainty policy
 
 The later full runs show that a single world-axis position sigma is not a
@@ -109,7 +132,7 @@ must still pass the 0.45 s freshness limit. The map frame does not enter this
 transform. Full AMCL covariance still governs route confidence and speed.
 
 The commanded motion is sampled at <=0.02 m arc intervals through reaction
-travel plus `v^2/(2*0.7)` and a 0.10 m buffer, with the complete body footprint.
+travel plus `v^2/(2*0.7)` and a 0.02 m sampling buffer, with the complete body footprint.
 Reaction time is at least 0.35 s and increases to `scan_age + 0.25 s` for older
 accepted scans. Guard speed is the largest of measured, previous commanded and
 planned speed. A rigid-body interpolation bound covers gaps between samples.

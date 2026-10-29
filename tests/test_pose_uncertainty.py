@@ -104,7 +104,7 @@ class CovarianceCollisionTest(unittest.TestCase):
     def test_stopping_horizon_increases_for_scan_age_and_contains_buffer(self):
         for speed in (0.,.2,.4,.8):
             expected=speed*.7+speed*speed/(2*.7)
-            self.assertGreaterEqual(stopping_horizon(speed,.7),expected+.1-1e-10)
+            self.assertGreaterEqual(stopping_horizon(speed,.7),expected+.02-1e-10)
             self.assertGreaterEqual(stopping_horizon(speed,.7),stopping_horizon(speed,.35))
 
     def test_collision_budget_is_invariant_to_global_map_rotation(self):

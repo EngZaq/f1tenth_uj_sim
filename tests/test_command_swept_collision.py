@@ -112,4 +112,26 @@ class LocalSpeedTest(unittest.TestCase):
         json.dumps(dict(blocked=result[0],gap=result[1],hits=result[2]))
 
 
+
+class RecordedBufferTest(unittest.TestCase):
+    def evaluate(self,index,buffer=.02):
+        data=json.loads((Path(__file__).parent/'fixtures/commanded_corner_stop.json').read_text())
+        proposal=data['proposals'][index]
+        return command_swept_collision(
+            data['scan_ranges'],data['angle_min'],data['angle_increment'],
+            data['range_min'],data['range_max'],proposal['steering'],
+            proposal['guard_velocity'],initial_steering=data['initial_steering'],
+            scan_to_body=data['scan_to_body'],reaction=data['reaction'],
+            margin=data['margin'],horizon_buffer=buffer)
+
+    def test_recorded_slow_proposal_preserves_margin_with_sampling_buffer(self):
+        self.assertTrue(self.evaluate(-1,.10)[0])
+        blocked,gap,_=self.evaluate(-1)
+        self.assertFalse(blocked)
+        self.assertGreaterEqual(gap,.07)
+
+    def test_recorded_fast_proposal_still_blocked(self):
+        self.assertTrue(self.evaluate(0)[0])
+
+
 if __name__=='__main__':unittest.main()
