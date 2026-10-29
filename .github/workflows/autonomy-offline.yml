@@ -10,6 +10,8 @@ on:
       - "tools/mission/mission_amcl.launch.py"
       - "tools/mission/full_autonomy.py"
       - "tools/mission/ros_graph.py"
+      - "tools/mission/map_coverage.py"
+      - "tools/mission/mission_first_lap.py"
       - "tools/mission/mission_slam.launch.py"
       - "tools/mission/mission_explore.py"
       - "tools/mission/map_scan_seed.py"
@@ -50,6 +52,8 @@ jobs:
             tools/mission/run_profiled_saved_map.py \
             tools/mission/full_autonomy.py \
             tools/mission/ros_graph.py \
+            tools/mission/map_coverage.py \
+            tools/mission/mission_first_lap.py \
             tools/mission/mission_slam.launch.py \
             tools/mission/mission_explore.py \
             tools/mission/map_scan_seed.py \
@@ -72,6 +76,7 @@ jobs:
           python tests/test_stationary_probe.py
           python tests/test_full_autonomy.py
           python tests/test_ros_graph_handoff.py
+          python tests/test_map_coverage.py
           python tests/test_sim_localization_audit_node.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection

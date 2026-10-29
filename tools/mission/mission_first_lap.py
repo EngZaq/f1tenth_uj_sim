@@ -10,11 +10,13 @@ from pathlib import Path
 
 import rclpy
 from nav_msgs.msg import Odometry
+from nav_msgs.msg import OccupancyGrid
 from std_msgs.msg import Bool
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from rclpy.time import Time
 from tf2_ros import Buffer, TransformListener, TransformException
+from map_coverage import corridor_coverage
 
 
 def yaw(q):
@@ -41,14 +43,27 @@ class FirstLap(Node):
         self.distance = 0.0
         self.left_start = False
         self.complete = False
+        self.coverage = {'closed':False}
+        self.map_seen = None
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
                          reliability=ReliabilityPolicy.RELIABLE)
         self.pub = self.create_publisher(Bool, '/mission/first_lap_complete', qos)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_odom, 10)
+        self.create_subscription(OccupancyGrid, '/mission/slam_map', self.on_map, qos)
         self.last_info = 0.0
         self.get_logger().info('First-lap watcher uses EKF odom and SLAM TF, never simulator truth.')
+
+    def on_map(self, msg):
+        if msg.header.frame_id != 'slam_map':
+            return
+        try:
+            self.coverage=corridor_coverage(msg.data,msg.info.width,msg.info.height,msg.info.resolution)
+            self.map_seen=time.monotonic()
+        except ValueError as exc:
+            self.coverage={'closed':False}
+            self.get_logger().error('Coverage check rejected map: '+str(exc))
 
     def on_odom(self, msg):
         if self.complete:
@@ -76,13 +91,18 @@ class FirstLap(Node):
             self.left_start = True
         if now-self.last_info > 6.0:
             self.get_logger().info(f'Explored={self.distance:.1f}m away={radius:.2f}m '
-                                   f'heading_delta={heading_error:.1f}deg elapsed={elapsed:.0f}s')
+                                   f'heading_delta={heading_error:.1f}deg elapsed={elapsed:.0f}s '
+                                   f'observed_corridor_closed={self.coverage["closed"]}')
             self.last_info = now
         if not (self.left_start and
                 self.distance >= float(self.get_parameter('min_distance_m').value) and
                 elapsed >= float(self.get_parameter('min_time_s').value) and
                 radius <= float(self.get_parameter('return_distance_m').value) and
                 heading_error <= float(self.get_parameter('heading_tolerance_deg').value)):
+            return
+        if (not self.coverage['closed'] or self.map_seen is None or now-self.map_seen>8.):
+            # An odometry return is only a hypothesis of a complete map. Keep
+            # exploring until the observed 0.30 m corridor actually closes.
             return
         try:
             tf = self.tf_buffer.lookup_transform('slam_map','fusion_base',Time())
@@ -96,7 +116,8 @@ class FirstLap(Node):
                   'duration_s':round(elapsed,2),
                   'return_distance_odom_m':round(radius,3),
                   'return_yaw_error_deg':round(heading_error,2),
-                  'source':'EKF loop detector; current pose from SLAM TF'}
+                  'observed_corridor':self.coverage,
+                  'source':'EKF return plus observed closed corridor; current pose from SLAM TF'}
         self.file.parent.mkdir(parents=True,exist_ok=True)
         temp=self.file.with_suffix('.tmp')
         temp.write_text(json.dumps(record, indent=2))

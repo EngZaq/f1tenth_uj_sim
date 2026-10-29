@@ -4,7 +4,7 @@
   "assumption": "Replay uses zero measured speed after commanded stop; measured EKF speed was not recorded in the old controller CSV. Production still requires measured speed <=0.08m/s.",
   "trigger": {
     "elapsed_s": 0.0,
-    "pose_stamp_s": 1793287578.0340002,
+    "pose_stamp_s": 1793287578.063383,
     "position_std_m": 0.0807,
     "yaw_std_rad": 0.054489179247262966
   },

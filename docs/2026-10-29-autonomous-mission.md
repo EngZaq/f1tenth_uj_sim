@@ -49,6 +49,27 @@ See [confidence evidence](evidence/confidence_recovery_findings.json) and the
 [full Gym workflow](../.github/workflows/autonomy-gym.yml) for assumptions and
 current verification status.
 
+## Coverage completion discovered by full Gym CI
+
+The full ROS/Gym run also exposed a distinct mapping handoff problem: the EKF
+return detector stopped after about 34.1 m even though the saved map contained
+an unknown wedge that broke its 0.30 m clearance corridor. The extractor
+correctly rejected that map instead of filling the gap or reducing clearance.
+
+`mission_first_lap.py` now also subscribes to the observed SLAM occupancy grid.
+It requires a fresh map with a closed 0.30 m corridor around a substantial
+interior, using the same free/unknown interpretation as the route extractor.
+If the odometry return happens while coverage is still open, exploration
+continues within the existing timeout. Only a return with observed closed
+coverage ends mapping. The later full-body and steering audit is still needed;
+this topology check alone does not establish route feasibility or a verified
+SLAM pose-graph loop closure.
+
+The actual rejected CI mask and the prior passing laptop mask are retained in
+`tests/fixtures/map_coverage_recordings.json`. Tests verify the difference and
+that unknown cells cannot silently become free. The map-coverage decision is
+included in `lap_pose.json` for each new run.
+
 ## First integrated run: SLAM-to-AMCL handoff correction
 
 The uploaded run `autonomous_20261029_164139_586206` explored 34.212 m over
@@ -171,7 +192,7 @@ zsh scripts/run_full_autonomy.zsh --laps 3 --speed-cap 0.40 --explore-speed 0.18
 | Stage | Automatic behavior |
 | --- | --- |
 | Preflight | Check existing nodes, actuation ownership and simulator; start the command watchdog and sensor/EKF/SLAM stack |
-| Exploration | Use the LiDAR explorer; detect an estimated return to the start, stop exploring and hold zero speed |
+| Exploration | Use the LiDAR explorer; require an estimated return plus a fresh observed closed corridor before stopping and holding zero speed |
 | Map save | Save a new YAML/PGM, capture the current SLAM-frame pose and stop SLAM before AMCL starts |
 | Planning | Extract and orient a closed centerline, try periodic smoothing candidates, optimize and check full-body clearance/steering; reject all-invalid candidates |
 | Graph handoff | Verify departure of mapping nodes through bounded fresh discovery before starting localization |
@@ -180,8 +201,9 @@ zsh scripts/run_full_autonomy.zsh --laps 3 --speed-cap 0.40 --explore-speed 0.18
 | Racing | Start the profiled controller on the new route, automatically arm, count the requested estimated-pose laps and retain its fault gates |
 | Completion/stop | Save stage status and an offline truth-audit summary when available, clean up owned processes and create one ZIP with run outputs |
 
-The return detector is still an odometry/heading heuristic. A closed extracted
-route and an estimated return are not proof of a verified SLAM pose-graph loop
+The return detector still uses an odometry/heading heuristic plus a necessary
+observed-coverage gate. A closed extracted route and an estimated return are
+not proof of a verified SLAM pose-graph loop
 closure. Repeated-map/start/fault acceptance remains future verification work.
 
 ## Command ownership and stopping
