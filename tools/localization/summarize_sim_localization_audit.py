@@ -75,6 +75,15 @@ def motion_audit(rows, max_pair_lag=0.05, motion_speed=0.05, max_gap=0.5):
             previous = None
             continue
         t, x, y, lag = values
+        # New recordings retain exact source stamps; old recordings only
+        # provide a rounded absolute pairing lag and the AMCL timestamp.
+        motion_t = number(row, 'truth_stamp_s') if 'truth_stamp_s' in row else t
+        if motion_t is None:
+            counts['invalid'] += 1
+            previous = None
+            continue
+        if 'truth_stamp_s' in row:
+            lag = abs(motion_t-t)
         if last_timestamp is not None and t <= last_timestamp:
             counts['nonmonotonic'] += 1
             # Start a new segment after a reset; never evaluate its jump.
@@ -86,14 +95,18 @@ def motion_audit(rows, max_pair_lag=0.05, motion_speed=0.05, max_gap=0.5):
             counts['late_pair'] += 1
             previous = None
             continue
-        current = (t, x, y)
+        current = (motion_t, x, y)
         if previous is None:
             counts['no_interval'] += 1
             previous = current
             continue
-        dt = t-previous[0]
+        dt = motion_t-previous[0]
         step = math.hypot(x-previous[1], y-previous[2])
         previous = current
+        if dt <= 0:
+            counts['nonmonotonic'] += 1
+            previous = None
+            continue
         if dt > max_gap:
             counts['gap'] += 1
             continue
@@ -146,11 +159,18 @@ def print_motion_audit(rows, args):
     if anchor_lag is None or not 0 <= anchor_lag <= args.max_pair_lag_s:
         print('WARNING: initial alignment pair fails this timing filter; '
               'the recorded relative errors still inherit that alignment.')
-    print('Motion speed is an interval average from recorded truth positions. '
-          'Exact truth sample stamps were not saved; timing bias can remain.')
-    print('Forward/left errors use the TRUE VEHICLE axes, not route tangent/normal. '
-          'Full XY covariance was not saved: no covariance-consistency or '
-          'clearance-safety verdict is possible from this CSV alone.')
+    if 'truth_stamp_s' in rows[0]:
+        print('Motion speed is an interval average using recorded truth sample stamps.')
+    else:
+        print('Motion speed is an interval average from recorded truth positions. '
+              'Exact truth sample stamps were not saved; timing bias can remain.')
+    print('Forward/left errors use the TRUE VEHICLE axes, not route tangent/normal.')
+    if 'amcl_cov_xy' in rows[0]:
+        print('Full planar covariance is recorded for follow-up analysis; this summary '
+              'provides no covariance-consistency or clearance-safety verdict.')
+    else:
+        print('Full XY covariance was not saved: no covariance-consistency or '
+              'clearance-safety verdict is possible from this CSV alone.')
 
 
 def read_csv(path):

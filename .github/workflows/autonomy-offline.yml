@@ -8,6 +8,7 @@ on:
       - "tools/planning/optimize_vehicle_route.py"
       - "tools/mission/run_profiled_saved_map.py"
       - "tools/localization/sim_localization_audit.py"
+      - "tools/localization/initialize_amcl_pose.py"
       - "tools/localization/summarize_sim_localization_audit.py"
       - "tests/**"
       - ".github/workflows/autonomy-offline.yml"
@@ -35,12 +36,14 @@ jobs:
             tools/planning/optimize_vehicle_route.py \
             tools/mission/run_profiled_saved_map.py \
             tools/localization/sim_localization_audit.py \
+            tools/localization/initialize_amcl_pose.py \
             tools/localization/summarize_sim_localization_audit.py
       - name: Test profile tracking and predicted collision geometry
         run: |
           python tests/test_racing_policy.py
           python tests/test_confidence_policy.py
           python tests/test_localization_summary.py
+          python tests/test_amcl_initialization.py
           python tests/test_sim_localization_audit_node.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection

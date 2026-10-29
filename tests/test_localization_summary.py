@@ -42,6 +42,19 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(len(groups['STATIONARY']), 1)
         self.assertFalse(groups['MOVING'])
 
+    def test_new_schema_uses_exact_truth_times_and_pair_lag(self):
+        first, second = sample(1.), sample(1.1, x=.04)
+        first['truth_stamp_s'] = .99
+        second['truth_stamp_s'] = 1.08
+        groups, _, duration, _ = SUMMARY.motion_audit([first, second])
+        self.assertAlmostEqual(duration['MOVING'], .09)
+        self.assertAlmostEqual(groups['MOVING'][0]['interval_truth_speed_mps'], .04/.09)
+        # A misleading rounded lag must not override the saved source stamp.
+        second['truth_stamp_s'] = .9
+        groups, counts, _, _ = SUMMARY.motion_audit([first, second])
+        self.assertFalse(groups['MOVING'])
+        self.assertEqual(counts['late_pair'], 1)
+
     def test_late_and_missing_pairs_break_intervals(self):
         rows = [sample(1), sample(1.1, x=.04, lag=.18),
                 sample(1.2, x=.08), sample(1.3, x=.12),

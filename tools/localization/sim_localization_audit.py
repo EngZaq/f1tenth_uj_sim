@@ -73,7 +73,13 @@ class Audit(Node):
             'amcl_relative_pos_error_m', 'amcl_relative_yaw_error_deg',
             'ekf_relative_pos_error_m', 'ekf_relative_yaw_error_deg',
             'amcl_pos_std_m', 'amcl_yaw_std_deg',
-            'truth_pair_lag_s', 'ekf_pair_lag_s'])
+            'truth_pair_lag_s', 'ekf_pair_lag_s',
+            'truth_stamp_s', 'ekf_stamp_s',
+            'aligned_truth_x_map', 'aligned_truth_y_map', 'aligned_truth_yaw_deg',
+            'ekf_x_odom', 'ekf_y_odom', 'ekf_yaw_deg',
+            'amcl_cov_xx', 'amcl_cov_xy', 'amcl_cov_x_yaw',
+            'amcl_cov_yx', 'amcl_cov_yy', 'amcl_cov_y_yaw',
+            'amcl_cov_yaw_x', 'amcl_cov_yaw_y', 'amcl_cov_yaw_yaw'])
         self.output_fp.flush()
         self.create_subscription(Odometry, '/ego_racecar/odom', self.on_truth, 30)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_ekf, 30)
@@ -140,7 +146,13 @@ class Audit(Node):
             f'{amcl_pos_error:.5f}', f'{amcl_yaw_error:.3f}',
             f'{ekf_pos_error:.5f}', f'{ekf_yaw_error:.3f}',
             f'{pos_std:.5f}', f'{yaw_std:.3f}',
-            f'{abs(truth[0]-t):.3f}', f'{abs(ekf[0]-t):.3f}' if ekf is not None else 'nan'])
+            f'{abs(truth[0]-t):.3f}', f'{abs(ekf[0]-t):.3f}' if ekf is not None else 'nan',
+            f'{truth[0]:.9f}', f'{ekf[0]:.9f}' if ekf is not None else 'nan',
+            f'{aligned_truth[0]:.9f}', f'{aligned_truth[1]:.9f}',
+            f'{math.degrees(aligned_truth[2]):.6f}',
+            *([f'{ekf[1][0]:.9f}', f'{ekf[1][1]:.9f}',
+               f'{math.degrees(ekf[1][2]):.6f}'] if ekf is not None else ['nan']*3),
+            *[f'{covariance[i]:.12g}' for i in (0, 1, 5, 6, 7, 11, 30, 31, 35)]])
         mono=time.monotonic()
         if mono-self.last_log>2:
             self.output_fp.flush()

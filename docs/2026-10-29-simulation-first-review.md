@@ -4,6 +4,12 @@ Reviewed 29 October 2026. This is a representative source-code comparison and
 the first diagnostic step, not a claim to have evaluated every university or
 completed the autonomy system.
 
+Follow-up: the missing run recordings have since been supplied. See
+[recorded localization findings and the startup fix](2026-10-29-recorded-localization-findings.md)
+for the measured results, explicit-covariance initialization and next stationary
+observation. Statements below about unavailable moving CSVs describe the first
+review, before that upload.
+
 ## Exact starting point
 
 | Source | Revision / evidence |
