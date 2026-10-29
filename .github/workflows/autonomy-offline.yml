@@ -26,6 +26,7 @@ jobs:
         run: |
           python -m py_compile \
             tools/navigation/racing_policy.py \
+            tools/navigation/confidence_policy.py \
             tools/navigation/trajectory_safety.py \
             tools/navigation/profiled_amcl_drive.py \
             tools/planning/vehicle_footprint_audit.py \
@@ -34,6 +35,7 @@ jobs:
       - name: Test profile tracking and predicted collision geometry
         run: |
           python tests/test_racing_policy.py
+          python tests/test_confidence_policy.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection
         run: python tests/test_optimizer_cli.py
