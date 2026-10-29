@@ -121,7 +121,7 @@ def improve(map_yaml, route_csv, out, min_margin, max_steer_deg, iters=40):
     angle_delta = np.arctan2(np.sin(yaw[jj]-yaw[ii]),
                              np.cos(yaw[jj]-yaw[ii]))
     dense_yaw = yaw[ii] + fraction * angle_delta
-    dense, _, _ = clearance(dense_xy, dense_y, distance,
+    dense, _, _ = clearance(dense_xy, dense_yaw, distance,
                              origin, res, lon, lat)
     dense_min = float(dense.min())
     accepted = (new_min >= min_margin and dense_min >= min_margin and
