@@ -1,0 +1,47 @@
+name: Autonomy offline verification
+
+on:
+  pull_request:
+    paths:
+      - "tools/navigation/**"
+      - "tools/planning/vehicle_footprint_audit.py"
+      - "tools/planning/optimize_vehicle_route.py"
+      - "tools/mission/run_profiled_saved_map.py"
+      - "tools/localization/sim_localization_audit.py"
+      - "tools/localization/summarize_sim_localization_audit.py"
+      - "tests/**"
+      - ".github/workflows/autonomy-offline.yml"
+  workflow_dispatch:
+
+jobs:
+  pure-python-tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install "numpy<2" "scipy<2" Pillow PyYAML
+      - name: Compile all new controller and planning source
+        run: |
+          python -m py_compile \
+            tools/navigation/racing_policy.py \
+            tools/navigation/confidence_policy.py \
+            tools/navigation/trajectory_safety.py \
+            tools/navigation/profiled_amcl_drive.py \
+            tools/planning/vehicle_footprint_audit.py \
+            tools/planning/optimize_vehicle_route.py \
+            tools/mission/run_profiled_saved_map.py \
+            tools/localization/sim_localization_audit.py \
+            tools/localization/summarize_sim_localization_audit.py
+      - name: Test profile tracking and predicted collision geometry
+        run: |
+          python tests/test_racing_policy.py
+          python tests/test_confidence_policy.py
+          python tests/test_localization_summary.py
+          python tests/test_sim_localization_audit_node.py
+          python tests/test_trajectory_safety.py
+      - name: Test real-map optimizer command and rejection
+        run: python tests/test_optimizer_cli.py
