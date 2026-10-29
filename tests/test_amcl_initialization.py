@@ -86,6 +86,20 @@ class SeedTest(unittest.TestCase):
                                      lambda *a, **k: None, lambda: next(ticks))
         self.assertEqual(len(sent), 1)
 
+    def test_missing_first_reply_requests_update_without_reseeding(self):
+        sent,replies,updates=[],[],[]
+        pub=NS(get_subscription_count=lambda:1,publish=sent.append)
+        node=NS(get_clock=lambda:NS(now=lambda:NS(to_msg=lambda:NS(sec=100,nanosec=0))))
+        ticks=iter([i*.1 for i in range(100)])
+        def request():
+            updates.append(True)
+            replies.append(message(102))
+        reply=INIT.publish_and_confirm(node,pub,message(),replies,2.,
+            lambda *a,**k:None,lambda:next(ticks),request_update=request)
+        self.assertEqual(len(sent),1)
+        self.assertEqual(len(updates),1)
+        self.assertEqual(INIT.stamp_s(reply),102)
+
 
 class ObserverRoutingTest(unittest.TestCase):
     def test_seed_topic_is_isolated_from_gym_reset(self):

@@ -104,6 +104,10 @@ jobs:
         run: |
           source /opt/ros/humble/setup.bash
           python3 tests/ros_graph_handoff_live.py
+      - name: Confirm one-shot AMCL seed when the first stationary reply is absent
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 tests/ros_amcl_seed_handshake_live.py
       - name: Preserve live graph observations
         if: always()
         uses: actions/upload-artifact@v4

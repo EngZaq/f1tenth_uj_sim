@@ -92,6 +92,15 @@ motion noise, initial 0.10 m/5 degree prior and controller admission/hard limits
 remain unchanged. Full-run passive truth errors must be inspected alongside
 covariance; artificial confidence is not an acceptance result.
 
+An intermittent stationary initialization deadlock also appeared in CI: AMCL
+logged that it accepted the seed, but the initializer missed its pose reply.
+The old helper waited for another pose while all no-motion refresh callers
+started only after that acknowledgement. It now publishes the seed exactly
+once, then requests bounded asynchronous no-motion updates while awaiting a
+fresh reply. This avoids repeatedly resetting the particle cloud. A live ROS
+fixture deliberately withholds the initial reply and confirms that a service-
+driven estimate completes the handshake without drive or Gym-reset publishing.
+
 ## First integrated run: SLAM-to-AMCL handoff correction
 
 The uploaded run `autonomous_20261029_164139_586206` explored 34.212 m over
