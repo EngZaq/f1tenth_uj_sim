@@ -99,3 +99,47 @@ localization and tracking uncertainty before enabling high-speed runs.
    measured steering/ERPM and physical sensor calibration.
 
 No safety limit should be reduced just to get a completed lap.
+
+
+## 2026-10-29 implementation update: map-specific body clearance optimization
+
+The initial full-body clearance audit was confirmed by the developer's local test:
+0.1118034 m minimum on the 377-point recovered track, limiting waypoint 44;
+steering demand 20.1853 degrees vs 24.0012-degree limit. A required margin
+0.10 m passed; 0.15 m correctly failed (exit status 2).
+
+The new \`tools/planning/optimize_vehicle_route.py\` searches for smooth,
+periodic local path offsets around the most restrictive body-clearance
+section, recomputes headings and curvature and checks both conservative
+occupancy-cell clearance and sub-cell interpolated clearance. Eight
+intermediate positions per segment are also checked, not only waypoint poses.
+No output is written when the requested margin fails.
+
+An offline run against the actual recovered map and feasible CSV gave:
+- Prior conservative nominal body clearance: 0.112 m at waypoint 44.
+- Optimized candidate: approximately 0.150 m conservative minimum clearance,
+  including intermediate body poses; peak steering about 19.75 degrees.
+- Largest local lateral route adjustment: about 0.017 m.
+- Generated simulation-only speed envelope: approximately 0.20-0.80 m/s.
+
+This is **not** sufficient uncertainty reserve for high-speed autonomous
+operation or the physical vehicle: 0.150 m is a *nominal geometric bound*.
+The 0.05 m map grid, assumed car dimensions, pose drift, tracker CTE,
+obstacle-sensing uncertainty, actuator behavior, and dynamic tracking must
+all be accounted for before deployment. The saved-map controller still uses
+its previous constant speed and old front-cone guard: it does not consume
+this candidate speed profile yet.
+
+Generate an offline candidate from the engineering branch:
+
+\`\`\`bash
+python3 tools/planning/optimize_vehicle_route.py \
+  results/missions/20261028_112407/new_track.yaml \
+  results/missions/20261028_112407/new_track_mission_forward_feasible.csv \
+  --margin 0.15 \
+  --out results/missions/20261028_112407/new_track_body_optimized.csv
+\`\`\`
+
+Do not rename the candidate over the previously validated route. Integration
+with a predictive safety arbiter and a speed-profile-aware controller, followed
+by genuine repeated ROS/Gym lap tests, remains unfinished.
