@@ -64,8 +64,8 @@ class Audit(Node):
         self.last_log = 0.
         self.path = Path(output)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.handle = self.path.open('w', newline='')
-        self.csv = csv.writer(self.handle)
+        self.output_fp = self.path.open('w', newline='')
+        self.csv = csv.writer(self.output_fp)
         self.csv.writerow([
             'stamp_s', 'elapsed_s',
             'truth_x_sim', 'truth_y_sim', 'truth_yaw_deg',
@@ -74,6 +74,7 @@ class Audit(Node):
             'ekf_relative_pos_error_m', 'ekf_relative_yaw_error_deg',
             'amcl_pos_std_m', 'amcl_yaw_std_deg',
             'truth_pair_lag_s', 'ekf_pair_lag_s'])
+        self.output_fp.flush()
         self.create_subscription(Odometry, '/ego_racecar/odom', self.on_truth, 30)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_ekf, 30)
         self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.on_amcl, 30)
@@ -142,7 +143,7 @@ class Audit(Node):
             f'{abs(truth[0]-t):.3f}', f'{abs(ekf[0]-t):.3f}' if ekf is not None else 'nan'])
         mono=time.monotonic()
         if mono-self.last_log>2:
-            self.handle.flush()
+            self.output_fp.flush()
             self.get_logger().info(
                 f'AMCL relative error={amcl_pos_error:.3f}m / '
                 f'{amcl_yaw_error:.1f}deg; filter std={pos_std:.3f}m / '
@@ -150,9 +151,9 @@ class Audit(Node):
             self.last_log=mono
 
     def close(self):
-        if not self.handle.closed:
-            self.handle.flush()
-            self.handle.close()
+        if not self.output_fp.closed:
+            self.output_fp.flush()
+            self.output_fp.close()
 
 
 def main():
