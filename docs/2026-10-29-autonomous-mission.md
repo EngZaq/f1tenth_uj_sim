@@ -50,6 +50,25 @@ parameters in `envs/dynamic_models/__init__.py`.
 The optional stop-snapshot writer also handles native Python geometry values
 and catches diagnostic-write failures so they cannot interrupt stopping.
 
+## Low-speed S-bend tracking correction
+
+The frame-corrected full run reached the S-bend, then exposed another control
+issue. At a recorded state the rear axle was about 0.05 m left of the route and
+its heading was about 4.9 degrees left of the local route tangent. Nevertheless,
+the previous 0.515 m Pure Pursuit target requested +1.3 degrees left because its
+target lay beyond the bend. A 0.30 m target at that same state requested -15.1
+degrees right. Increasing the allowed CTE or removing the local guard would not
+correct that steering direction.
+
+Default lookahead is now `0.30 + 0.20*planned_speed` metres, clamped to
+0.25-0.60 m: 0.31 m at 0.05 m/s and 0.38 m at 0.40 m/s. This is a low-speed
+technical-course tuning, with the complete live mission still required for
+acceptance. A full-circuit bicycle-model regression applies 5 cm lateral and
+5 degree heading perturbations in both directions, a 20 Hz control loop and
+the pinned simulator's 3.2 rad/s steering slew. It checks full net progress and
+a maximum estimated CTE below 0.07 m. Ideal-pose model tests do not replace the
+AMCL/local-guard integration run or certify other speeds and tracks.
+
 ## Current runtime uncertainty policy
 
 The later full runs show that a single world-axis position sigma is not a

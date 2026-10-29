@@ -30,7 +30,7 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Empty
 from tf2_ros import Buffer, TransformListener, TransformException
 
-from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta
+from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta, tracking_lookahead
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from pose_uncertainty import planar_covariance, project_uncertainty
 from trajectory_safety import command_swept_collision, stopping_horizon, select_clear_speed
@@ -51,8 +51,8 @@ class ProfiledAMCLDrive(Node):
             'waypoints_file': '',
             'results_file': '/tmp/f1tenth_profiled.csv',
             'speed_cap_mps': 0.40,
-            'lookahead_base_m': 0.50,
-            'lookahead_speed_gain_s': 0.30,
+            'lookahead_base_m': 0.30,
+            'lookahead_speed_gain_s': 0.20,
             'max_steering_angle': 0.4189,
             'max_path_cte_m': 0.09,
             'max_pose_age_s': 0.65,
@@ -373,7 +373,7 @@ class ProfiledAMCLDrive(Node):
                             'measured_speed':self.measured_speed,'previous_speed':self.last_output_speed,
                             'proposals':[]}
                         def evaluate(proposal):
-                            lookahead=max(.45,min(.80,self.aim_base+self.aim_gain*proposal))
+                            lookahead=tracking_lookahead(proposal,self.aim_base,self.aim_gain)
                             steering=self.route.aim(x,y,yaw,index,lookahead,self.max_steer)
                             guard_velocity=max(self.measured_speed,self.last_output_speed,proposal)
                             stopping_distance=stopping_horizon(guard_velocity,reaction)

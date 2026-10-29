@@ -8,7 +8,7 @@ import numpy as np
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools/navigation'))
-from racing_policy import ProfiledRoute, ramp_velocity
+from racing_policy import ProfiledRoute, ramp_velocity, route_progress_delta, tracking_lookahead, normalized_angle
 
 
 class ProfileTest(unittest.TestCase):
@@ -38,6 +38,34 @@ class ProfileTest(unittest.TestCase):
     def test_odom_speed_ramp(self):
         self.assertAlmostEqual(ramp_velocity(0., .8, .05), .025)
         self.assertAlmostEqual(ramp_velocity(.8, 0., .05), .76)
+
+
+    def test_short_lookahead_tracks_whole_recorded_route_with_steering_slew(self):
+        # Ideal estimated rear-axle pose: policy/model test, not a localization
+        # or collision certificate. Perturb initial lateral pose and heading.
+        r=self.route;dt=.05;speed=.4
+        for offset,heading_error in ((.05,5.),(-.05,-5.)):
+            with self.subTest(offset=offset):
+                heading=float(r.data[0,3])
+                x,y=r.xy[0]+offset*np.array([-math.sin(heading),math.cos(heading)])
+                yaw=heading+math.radians(heading_error)
+                steering=0.;index=0;progress=0;worst=0.
+                for tick in range(6000):
+                    current=r.nearest(x,y,index)
+                    progress+=route_progress_delta(index,current,r.n)
+                    index=current;worst=max(worst,r.error(x,y,index))
+                    desired=r.aim(x,y,yaw,index,tracking_lookahead(speed))
+                    steering+=float(np.clip(desired-steering,-3.2*dt,3.2*dt))
+                    curvature=math.tan(steering)/r.wheelbase;distance=speed*dt
+                    if abs(curvature)>1e-9:
+                        x+=(math.sin(yaw+curvature*distance)-math.sin(yaw))/curvature
+                        y-=(math.cos(yaw+curvature*distance)-math.cos(yaw))/curvature
+                    else:
+                        x+=distance*math.cos(yaw);y+=distance*math.sin(yaw)
+                    yaw=normalized_angle(yaw+curvature*distance)
+                    if progress>=r.n:break
+                self.assertGreaterEqual(progress,r.n)
+                self.assertLess(worst,.07)
 
 
 if __name__ == '__main__':

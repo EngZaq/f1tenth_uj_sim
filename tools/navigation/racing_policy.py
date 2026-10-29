@@ -82,3 +82,10 @@ def route_progress_delta(previous, current, count, max_step=12):
     if abs(delta)>max_step:
         raise ValueError('route progress discontinuity')
     return delta
+
+
+def tracking_lookahead(speed, base=.30, gain=.20):
+    """Low-speed technical-course target distance in metres."""
+    if not all(math.isfinite(v) for v in (speed,base,gain)) or speed<0 or base<=0 or gain<0:
+        raise ValueError('Invalid tracking lookahead inputs')
+    return max(.25,min(.60,base+gain*speed))
