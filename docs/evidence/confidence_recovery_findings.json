@@ -1,0 +1,27 @@
+{
+  "run": "run_evidence_182122",
+  "source": "User-uploaded autonomous_20261029_182122_744147.zip",
+  "files_sha256": {
+    "estimated_drive.csv": "cb8138327a3d57a48ffd772773f7bd1f20d8de1e25d54e7b93da9542692ba340",
+    "localization_truth_audit.csv": "25d84201bb3665aec6e0d0e33886ed538883fb85c8434c6f482a96c27fa8e025",
+    "autonomous_drive.log": "b7fa79d14102d6d96c5e25182c81881dc0d3dc6570cfc0d301fa57637b15672e"
+  },
+  "observed_stop": "AMCL did not relocalize in 4.0s: pos_std=0.070m yaw_std=2.4deg",
+  "controller_moving_samples": 129,
+  "peak_estimated_cte_m": 0.0515,
+  "minimum_predicted_scan_body_gap_m": 0.442,
+  "admission_position_std_m": 0.08,
+  "old_recovery_position_std_m": 0.064,
+  "new_recovery_position_std_m": 0.08,
+  "recovery_fresh_samples": 4,
+  "recovery_measured_speed_limit_mps": 0.08,
+  "unchanged_pause_timeout_s": 4.0,
+  "recorded_covariance_replay_resume_elapsed_s": 1.4955599308013916,
+  "replay_assumption": "Zero measured EKF speed after commanded stop; prior log omitted this field. New controller records measured speed and exact AMCL stamp.",
+  "passive_relative_audit": {
+    "moving_samples": 51,
+    "moving_rms_position_error_m": 0.02,
+    "moving_max_position_error_m": 0.039,
+    "caveat": "Relative to first true/estimated alignment; not absolute map registration or a safety certificate"
+  }
+}

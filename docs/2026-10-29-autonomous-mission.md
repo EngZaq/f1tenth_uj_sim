@@ -6,6 +6,49 @@ exploration, map saving and route preparation, then stopped before localization
 on a stale SLAM-node graph check. The correction is described below. A complete
 end-to-end ROS/Gym race has not yet been demonstrated with these changes.
 
+## Second integrated run: confidence recovery correction
+
+`autonomous_20261029_182122_744147` passed both fresh graph checks, initialized
+AMCL and drove approximately 2.35 m before pausing. During moving samples the
+estimated route CTE peaked at 0.051 m and the predicted scan/body gap stayed
+above 0.465 m. The passive, first-pose-aligned audit reports moving relative
+position RMS error about 0.020 m, maximum 0.039 m. Those short-run relative
+measurements do not establish absolute map accuracy or whole-track clearance.
+
+The terminal fault was `AMCL did not relocalize in 4.0s: pos_std=0.070m`.
+The entry condition allowed 0.080 m position standard deviation, but the old
+pause exit required `0.8 * 0.080 = 0.064 m` and four stationary fresh estimates.
+Recorded uncertainty returned to 0.068-0.078 m, so the tighter exit never
+counted a good sample. Lateral uncertainty was around 0.02-0.03 m; most spread
+was along the corridor. This supports correcting recovery before changing the
+estimator or raising the admission bound.
+
+Recovery now uses the same position/yaw limits as entry and retains four
+distinct increasing pose stamps while measured EKF speed is <=0.08 m/s. This
+provides a time dwell before resuming. Above-limit or moving samples reset the
+recovery count; out-of-order timestamps cannot contribute. The 0.080 m entry,
+0.160 m hard position limit, 10/20 degree yaw limits, four-second pause timeout,
+tracking error limit and collision checks remain in force. The recovery exit
+threshold changed explicitly; this is not a claim that tighter covariance was
+obtained from the same measurements.
+
+Replaying measured covariance/stamps from the uploaded pause reaches four
+acceptable observations about 1.50 seconds into that stop, instead of timing
+out. That replay assumes zero measured speed after stopping because the old
+controller CSV omitted EKF speed. The new CSV includes `measured_speed_mps`
+and exact `amcl_stamp_s` for future checks. Stationary no-motion update requests
+continue at the bounded refresh rate throughout a confidence pause.
+
+The offline suite includes this recorded regression plus moving/unsafe sample
+resets and out-of-order estimates. A new independent CI workflow builds pinned
+Gym dependencies, applies the recorded simulator patch, and runs the complete
+unknown-map mission on the technical track under ROS Humble/CycloneDDS. Its
+artifacts include console output, maps, routes and passive audit logs on success
+or failure. This full test is separate from the existing ROS graph-only test.
+See [confidence evidence](evidence/confidence_recovery_findings.json) and the
+[full Gym workflow](../.github/workflows/autonomy-gym.yml) for assumptions and
+current verification status.
+
 ## First integrated run: SLAM-to-AMCL handoff correction
 
 The uploaded run `autonomous_20261029_164139_586206` explored 34.212 m over
@@ -158,8 +201,9 @@ the explorer's obstacle checks remain responsible for their proposed motions.
 The complete chain still needs real Gym fault-injection tests, including node
 crashes; the pure policy tests are not substitutes for those live tests.
 
-No covariance, tracking-error or swept-margin threshold was increased to force
-completion. If a stage cannot satisfy its current checks, the run stops and
+The driving admission, hard covariance, tracking-error and swept-margin limits
+remain unchanged. Recovery uses the explicit revised exit rule above. If a
+stage cannot satisfy its current checks, the run stops and
 records the failed stage. A failed or interrupted racing process cannot report
 success merely by exiting with code zero: the requested lap-completion record
 is required.
@@ -187,7 +231,8 @@ hardware readiness. Passive truth is retained for evaluating those claims.
   route fixture and writes its audited output; rejection handling is tested.
 - Standalone swept collision check, source compilation and zsh syntax checks.
 
-ROS 2/Gym are not installed in this editing environment. The uploaded laptop
-run supplies real exploration/mapping/planning evidence. The separate ROS CI
-job checks graph handoff only; no live watchdog stop or end-to-end race has been
-executed here. The next laptop run exercises the corrected complete workflow.
+ROS 2/Gym are not installed in the local editing runtime. Uploaded laptop runs
+supply exploration/mapping/planning and short AMCL driving evidence. ROS and
+full Gym execution use separate CI jobs, with their results and logs retained
+in GitHub Actions. A graph-only pass and an offline covariance replay do not
+substitute for successful full-mission execution.
