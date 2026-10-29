@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import ExternalShutdownException
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 from ackermann_msgs.msg import AckermannDriveStamped
@@ -371,7 +372,7 @@ def main():
     node = ProfiledAMCLDrive()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.close()
