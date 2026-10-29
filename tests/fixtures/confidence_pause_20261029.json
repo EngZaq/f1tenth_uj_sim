@@ -1,0 +1,79 @@
+{
+  "source_run": "autonomous_20261029_182122_744147/race_20261029_182544",
+  "source_audit_sha256": "25d84201bb3665aec6e0d0e33886ed538883fb85c8434c6f482a96c27fa8e025",
+  "assumption": "Replay uses zero measured speed after commanded stop; measured EKF speed was not recorded in the old controller CSV. Production still requires measured speed <=0.08m/s.",
+  "trigger": {
+    "elapsed_s": 0.0,
+    "pose_stamp_s": 1793287578.0340002,
+    "position_std_m": 0.0807,
+    "yaw_std_rad": 0.054489179247262966
+  },
+  "stationary_observations": [
+    {
+      "elapsed_s": 0.6642119884490967,
+      "pose_stamp_s": 1793287578.798212,
+      "position_std_m": 0.07729193847827857,
+      "yaw_std_rad": 0.05491107006278424
+    },
+    {
+      "elapsed_s": 0.9288039207458496,
+      "pose_stamp_s": 1793287579.062804,
+      "position_std_m": 0.07360843669444421,
+      "yaw_std_rad": 0.052777805018492385
+    },
+    {
+      "elapsed_s": 1.2639379501342773,
+      "pose_stamp_s": 1793287579.397938,
+      "position_std_m": 0.07480575969435777,
+      "yaw_std_rad": 0.05227617602732625
+    },
+    {
+      "elapsed_s": 1.4955599308013916,
+      "pose_stamp_s": 1793287579.62956,
+      "position_std_m": 0.07174739729411793,
+      "yaw_std_rad": 0.05138699425749671
+    },
+    {
+      "elapsed_s": 1.8954458236694336,
+      "pose_stamp_s": 1793287580.029446,
+      "position_std_m": 0.0688738086650506,
+      "yaw_std_rad": 0.04891826731140423
+    },
+    {
+      "elapsed_s": 2.1288039684295654,
+      "pose_stamp_s": 1793287580.262804,
+      "position_std_m": 0.06820830219775302,
+      "yaw_std_rad": 0.048129712003293766
+    },
+    {
+      "elapsed_s": 2.3956758975982666,
+      "pose_stamp_s": 1793287580.529676,
+      "position_std_m": 0.06833501062683754,
+      "yaw_std_rad": 0.04539195950176639
+    },
+    {
+      "elapsed_s": 2.7287909984588623,
+      "pose_stamp_s": 1793287580.862791,
+      "position_std_m": 0.07020643935103105,
+      "yaw_std_rad": 0.0444308316226469
+    },
+    {
+      "elapsed_s": 3.0648679733276367,
+      "pose_stamp_s": 1793287581.198868,
+      "position_std_m": 0.07088285248041307,
+      "yaw_std_rad": 0.04544911249969574
+    },
+    {
+      "elapsed_s": 3.3287899494171143,
+      "pose_stamp_s": 1793287581.46279,
+      "position_std_m": 0.07085571013743353,
+      "yaw_std_rad": 0.044985399428592386
+    },
+    {
+      "elapsed_s": 3.664156913757324,
+      "pose_stamp_s": 1793287581.798157,
+      "position_std_m": 0.07129706704093795,
+      "yaw_std_rad": 0.044797042239080924
+    }
+  ]
+}

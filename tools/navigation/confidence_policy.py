@@ -22,8 +22,8 @@ class ConfidenceGate:
         self.last_stamp = None
 
     def check(self, now, stamp, position_std, yaw_std, vehicle_speed):
-        if not all(map(math.isfinite, (position_std, yaw_std, vehicle_speed))):
-            return 'FAULT', 'nonfinite AMCL covariance/speed'
+        if not all(map(math.isfinite, (now, stamp, position_std, yaw_std, vehicle_speed))):
+            return 'FAULT', 'nonfinite AMCL covariance/speed/time'
         if position_std < 0 or yaw_std < 0:
             return 'FAULT', 'negative AMCL uncertainty'
         if position_std >= self.hard_pos or yaw_std >= self.hard_yaw:
@@ -43,12 +43,18 @@ class ConfidenceGate:
             return 'FAULT', (
                 f'AMCL did not relocalize in {self.timeout:.1f}s: '
                 f'pos_std={position_std:.3f}m yaw_std={math.degrees(yaw_std):.1f}deg')
-        recovered = (position_std <= 0.8 * self.soft_pos and
-                     yaw_std <= 0.8 * self.soft_yaw and
+        # Recovery uses the same admissible uncertainty as normal driving.
+        # Four fresh stationary samples provide dwell hysteresis. A hidden
+        # 20% tighter exit bound stranded the recorded run around 0.070 m even
+        # though it was back inside the unchanged 0.080 m driving gate.
+        recovered = (position_std <= self.soft_pos and
+                     yaw_std <= self.soft_yaw and
                      abs(vehicle_speed) <= 0.08)
-        if stamp != self.last_stamp:
+        if self.last_stamp is None or stamp > self.last_stamp:
             self.last_stamp = stamp
             self.good_count = self.good_count + 1 if recovered else 0
+        elif stamp < self.last_stamp or not recovered:
+            self.good_count = 0
         if self.good_count >= self.good_samples:
             self.paused_since = None
             self.good_count = 0

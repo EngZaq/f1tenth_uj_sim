@@ -146,10 +146,11 @@ class ProfiledAMCLDrive(Node):
                               'odom_age_s', 'predicted_body_gap_m',
                               'valid_scan_hits', 'no_motion_count',
                               'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state',
-                              'amcl_across_track_std_m', 'amcl_along_track_std_m'])
+                              'amcl_across_track_std_m', 'amcl_along_track_std_m',
+                              'measured_speed_mps','amcl_stamp_s'])
         self.timer = self.create_timer(.05, self.tick)
         self.get_logger().warn(
-            f'PROFILED CONTROLLER DISABLED; profile={csv_path}, cap={self.speed_limit}m/s. '
+            f'PROFILED CONTROLLER DISABLED; route={p("waypoints_file")}, log={csv_path}, cap={self.speed_limit}m/s. '
             'Simulation ONLY. Explicit /amcl_drive/enable required.')
 
     def on_enable(self, msg):
@@ -201,7 +202,8 @@ class ProfiledAMCLDrive(Node):
             return
         # Proactive refresh at slow speeds; a stationary update should not
         # depend on the controller being disabled.
-        if self.enabled and math.isfinite(pose_age) and pose_age < 0.20:
+        if (self.enabled and self.confidence.paused_since is None and
+                math.isfinite(pose_age) and pose_age < 0.20):
             return
         if monotonic_now - self.no_motion_at < 0.27:
             return
@@ -358,7 +360,9 @@ class ProfiledAMCLDrive(Node):
             f'{scan_age:.3f}', f'{odom_age:.3f}', f'{gap:.3f}',
             valid_hits, self.no_motion_count,
             f'{pos_std:.4f}', f'{math.degrees(yaw_std):.3f}', confidence_state,
-            f'{across_std:.4f}', f'{along_std:.4f}'])
+            f'{across_std:.4f}', f'{along_std:.4f}',
+            f'{self.measured_speed:.6f}',
+            f'{self.pose_stamp:.9f}' if self.pose_stamp is not None else 'nan'])
         if mono-self.last_print > 1.0:
             self.fp.flush()
             self.get_logger().info(
