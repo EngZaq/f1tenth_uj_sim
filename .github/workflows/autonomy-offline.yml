@@ -8,6 +8,16 @@ on:
       - "tools/planning/optimize_vehicle_route.py"
       - "tools/mission/run_profiled_saved_map.py"
       - "tools/mission/mission_amcl.launch.py"
+      - "tools/mission/full_autonomy.py"
+      - "tools/mission/mission_slam.launch.py"
+      - "tools/mission/mission_explore.py"
+      - "tools/mission/map_scan_seed.py"
+      - "tools/sim_geometry.py"
+      - "config/sim_laser_geometry.yaml"
+      - "scripts/run_full_autonomy.zsh"
+      - "tools/planning/prepare_vehicle_route.py"
+      - "tools/localization/fusion_scan_relay.py"
+      - "tools/localization/wait_amcl_ready.py"
       - "tools/localization/sim_localization_audit.py"
       - "tools/localization/initialize_amcl_pose.py"
       - "tools/localization/stationary_localization_probe.py"
@@ -37,6 +47,15 @@ jobs:
             tools/planning/vehicle_footprint_audit.py \
             tools/planning/optimize_vehicle_route.py \
             tools/mission/run_profiled_saved_map.py \
+            tools/mission/full_autonomy.py \
+            tools/mission/mission_slam.launch.py \
+            tools/mission/mission_explore.py \
+            tools/mission/map_scan_seed.py \
+            tools/sim_geometry.py \
+            tools/planning/prepare_vehicle_route.py \
+            tools/localization/fusion_scan_relay.py \
+            tools/localization/wait_amcl_ready.py \
+            tools/navigation/drive_watchdog.py \
             tools/mission/mission_amcl.launch.py \
             tools/localization/sim_localization_audit.py \
             tools/localization/initialize_amcl_pose.py \
@@ -49,6 +68,7 @@ jobs:
           python tests/test_localization_summary.py
           python tests/test_amcl_initialization.py
           python tests/test_stationary_probe.py
+          python tests/test_full_autonomy.py
           python tests/test_sim_localization_audit_node.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection

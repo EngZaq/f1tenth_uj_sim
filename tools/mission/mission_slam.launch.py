@@ -6,7 +6,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    config=str(Path.home()/'f1tenth_sim/config/slam_sim.yaml')
+    config=str(Path(__file__).resolve().parents[2]/'config/slam_sim.yaml')
     return LaunchDescription([Node(
         package='slam_toolbox',executable='async_slam_toolbox_node',
         name='slam_toolbox',output='screen',

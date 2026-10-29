@@ -21,11 +21,11 @@ def test_path_obstacle_and_side_wall():
         return ranges
     blocked, *_ = swept_path_collision(
         scan(0.8, 0.0), minimum_angle, step, .05, 25.,
-        route, (0., 0., 0.), 0, .5)
+        route, (0., 0., 0.), 0, .5, laser_x=.275)
     assert blocked
     blocked, *_ = swept_path_collision(
         scan(0.8, 0.8), minimum_angle, step, .05, 25.,
-        route, (0., 0., 0.), 0, .5)
+        route, (0., 0., 0.), 0, .5, laser_x=.275)
     assert not blocked
 
 

@@ -5,6 +5,7 @@ Does NOT consume simulator truth or publish motion commands. The old lap-finish
 pose is merely a search REGION; it is never assumed to be the current pose.
 """
 import argparse
+import sys
 import json
 import math
 from pathlib import Path
@@ -13,6 +14,8 @@ import yaml
 from PIL import Image
 from scipy.ndimage import distance_transform_edt, map_coordinates
 from scipy.optimize import minimize
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from sim_geometry import laser_points
 
 
 def wrap(a):
@@ -46,7 +49,7 @@ def scan_points(scan, subsample=4):
     aa=a[valid][::subsample]; rr=r[valid][::subsample]
     if len(aa)<40:
         raise ValueError(f'Not enough measured LiDAR hits: {len(aa)}')
-    return np.column_stack([0.275+rr*np.cos(aa),rr*np.sin(aa)]),np.column_stack([0.275+0.75*rr*np.cos(aa),0.75*rr*np.sin(aa)])
+    return laser_points(rr, aa), laser_points(rr, aa, scale=0.75)
 
 
 def path_points(path_file):

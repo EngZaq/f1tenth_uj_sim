@@ -3,14 +3,19 @@
 This is a supporting collision guard, not a stand-alone emergency-stop system.
 """
 import math
+import sys
+from pathlib import Path
 import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from sim_geometry import LASER
 
 
 def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_max,
                          route, pose, nearest_idx, velocity,
-                         wheelbase=0.3302, laser_x=0.275,
+                         wheelbase=0.3302, laser_x=LASER['x_m'],
                          front=0.46145, rear=-0.11855, halfwidth=0.155,
-                         margin=0.07, deceleration=0.7, reaction=0.35):
+                         margin=0.07, deceleration=0.7, reaction=0.35,
+                         laser_y=LASER['y_m'], laser_yaw=LASER['yaw_rad']):
     """route Nx4 columns s,x,y,yaw; pose=(x,y,yaw) in route map frame.
 
     Returns (blocked, minimum_obstacle_to_body_distance_m, valid_hit_count).
@@ -28,8 +33,8 @@ def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_ma
     if int(valid.sum()) < 35:
         return True, 0.0, int(valid.sum())
     radii, bearings = ranges[valid], angles[valid]
-    hits = np.column_stack((laser_x + radii * np.cos(bearings),
-                            radii * np.sin(bearings)))
+    hits = np.column_stack((laser_x + radii * np.cos(bearings+laser_yaw),
+                            laser_y + radii * np.sin(bearings+laser_yaw)))
     speed = max(0.0, float(velocity))
     horizon = max(0.55, speed * reaction +
                   speed * speed / (2 * max(deceleration, 0.1)) + 0.55)

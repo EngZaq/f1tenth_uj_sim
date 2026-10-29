@@ -1,5 +1,15 @@
 # UJ F1TENTH — Autonomous Racing Simulation
 
+## Automatic mission - experimental, 29 October 2026
+
+Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
+automatic exploration, fresh mapping, route preparation, AMCL startup and three
+estimated-pose laps. The shared laser mounting is corrected to the measured
+0.100 m, and a separate command watchdog owns `/drive`. This integrated workflow
+has offline verification but has not yet completed a live ROS/Gym mission.
+See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
+review branch, run command, stopping behavior, evidence and remaining limits.
+
 <!-- 2026-10-28-STATUS-UPDATE -->
 ## Project status - 28 October 2026
 

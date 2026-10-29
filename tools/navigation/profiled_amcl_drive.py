@@ -65,6 +65,7 @@ class ProfiledAMCLDrive(Node):
             'start_position_tolerance_m': 0.45,
             'start_heading_tolerance_deg': 25.0,
             'auto_stop_laps': 1,
+            'drive_topic': '/drive',
         }
         for key, value in defaults.items():
             self.declare_parameter(key, value)
@@ -89,11 +90,14 @@ class ProfiledAMCLDrive(Node):
         self.start_tolerance = float(p('start_position_tolerance_m'))
         self.start_yaw_tolerance = math.radians(float(p('start_heading_tolerance_deg')))
         self.auto_laps = int(p('auto_stop_laps'))
+        self.drive_topic = str(p('drive_topic'))
+        if self.drive_topic not in ('/drive','/mission/drive'):
+            raise ValueError('Unsupported simulator drive topic')
         if not 0.05 < self.speed_limit <= 0.8:
             raise ValueError('Simulation-only speed cap must be in (0.05, 0.8]m/s')
         if not 0.04 <= self.margin <= 0.2:
             raise ValueError('Invalid predicted footprint collision margin')
-        if self.count_publishers('/drive'):
+        if self.count_publishers(self.drive_topic):
             raise RuntimeError('STOP all existing /drive publishers before starting this controller')
 
         self.enabled = False
@@ -121,7 +125,7 @@ class ProfiledAMCLDrive(Node):
         self.last_steering = 0.
         self.last_print = 0.
 
-        self.pub = self.create_publisher(AckermannDriveStamped, '/drive', 10)
+        self.pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 10)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.on_pose, 10)
@@ -237,7 +241,7 @@ class ProfiledAMCLDrive(Node):
         issue = ''
         if self.latch:
             reason = 'SAFETY HOLD: ' + self.latch
-        elif self.count_publishers('/drive') > 1:
+        elif self.count_publishers(self.drive_topic) > 1:
             issue = 'competing /drive publisher'
         elif not self.enabled:
             reason = 'disabled'

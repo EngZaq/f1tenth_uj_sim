@@ -1,0 +1,7 @@
+# Measured in stationary_probe.json, 29 October 2026. Simulation only.
+# base_link->laser TF and offline scan/map check agree with x=0.100 m.
+x_m: 0.100
+y_m: 0.0
+yaw_rad: 0.0
+reference_body_frame: ego_racecar/base_link
+reference_scan_frame: ego_racecar/laser
