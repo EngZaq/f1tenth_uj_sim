@@ -17,6 +17,7 @@ on:
       - "tools/mission/map_scan_seed.py"
       - "tools/sim_geometry.py"
       - "config/sim_laser_geometry.yaml"
+      - "config/fusion_amcl.yaml"
       - "scripts/run_full_autonomy.zsh"
       - "tools/planning/prepare_vehicle_route.py"
       - "tools/localization/fusion_scan_relay.py"

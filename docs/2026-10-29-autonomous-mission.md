@@ -74,6 +74,24 @@ If coverage requires another mapping lap, total travel remains in
 single-lap length. Route extraction uses the latter so extra exploration does
 not incorrectly double the expected circuit length.
 
+## Simulation AMCL measurement model under full-run evaluation
+
+The coverage-gated full CI run passed mapping, planning, seeding and readiness,
+then stopped on sustained 0.081-0.086 m world-axis position uncertainty. Its
+lateral spread stayed about 0.023-0.026 m while longitudinal spread approached
+0.10 m. The admission threshold correctly remained in force: changing the
+recovery exit alone cannot solve a posterior that stays outside admission.
+
+The simulation likelihood-field model now tests `sigma_hit=0.10 m` instead of
+0.20 m and 120 sampled beams instead of 60. The simulator range noise is
+0.01 m, saved-map cells are 0.05 m, and the latest startup scan-match squared
+hit score corresponds approximately to 0.04 m residual scale. The 0.10 m
+setting retains slack for map error; it is a testable simulation-model choice,
+not a formally calibrated sensor-confidence claim. The random-hit mixture,
+motion noise, initial 0.10 m/5 degree prior and controller admission/hard limits
+remain unchanged. Full-run passive truth errors must be inspected alongside
+covariance; artificial confidence is not an acceptance result.
+
 ## First integrated run: SLAM-to-AMCL handoff correction
 
 The uploaded run `autonomous_20261029_164139_586206` explored 34.212 m over
