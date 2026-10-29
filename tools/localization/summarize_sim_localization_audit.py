@@ -43,6 +43,39 @@ def number(row, name):
     return value if math.isfinite(value) else None
 
 
+def sampled_truth_span(rows):
+    """Describe observed endpoints without inventing motion between samples."""
+    points = []
+    for row in rows:
+        values = [number(row, name) for name in ('stamp_s','truth_x_sim','truth_y_sim')]
+        if all(v is not None for v in values):
+            points.append(values)
+    if not points:
+        return None
+    first = points[0]
+    return {'samples': len(points), 'span_s': max(p[0] for p in points)-min(p[0] for p in points),
+            'max_displacement_m': max(math.hypot(p[1]-first[1], p[2]-first[2]) for p in points)}
+
+
+def vehicle_covariance_sigma(row):
+    """Project valid XY covariance on estimated vehicle axes, not route axes."""
+    values = [number(row, name) for name in
+              ('amcl_cov_xx','amcl_cov_xy','amcl_cov_yx','amcl_cov_yy','amcl_yaw_deg')]
+    if any(v is None for v in values):
+        return None
+    xx, xy, yx, yy, heading = values
+    if xx < 0 or yy < 0 or abs(xy-yx) > 1e-9:
+        return None
+    cross = .5*(xy+yx)
+    eigen_min = .5*(xx+yy-math.hypot(xx-yy, 2*cross))
+    if eigen_min < -1e-12:
+        return None
+    c, s = math.cos(math.radians(heading)), math.sin(math.radians(heading))
+    forward = c*c*xx+2*c*s*cross+s*s*yy
+    left = s*s*xx-2*c*s*cross+c*c*yy
+    return math.sqrt(max(0.,forward)), math.sqrt(max(0.,left))
+
+
 def motion_audit(rows, max_pair_lag=0.05, motion_speed=0.05, max_gap=0.5):
     """Classify interval endpoints using truth XY / recorded AMCL stamp.
 
@@ -139,6 +172,16 @@ def print_motion_audit(rows, args):
           f'moving >= {args.motion_threshold_mps:.3f}m/s; '
           f'max interval {args.max_sample_gap_s:.3f}s')
     print('Excluded/unclassified rows:', counts)
+    span = sampled_truth_span(rows)
+    if span:
+        print(f'OBSERVED TRUTH ENDPOINTS: n={span["samples"]} '
+              f'span={span["span_s"]:.3f}s '
+              f'max displacement from first={span["max_displacement_m"]:.5f}m')
+        print('Endpoint agreement does not prove zero motion between sparse samples.')
+    projection = vehicle_covariance_sigma(rows[-1])
+    if projection:
+        print(f'Last covariance in ESTIMATED VEHICLE axes: forward_sigma={projection[0]:.4f}m '
+              f'left_sigma={projection[1]:.4f}m (not a route-clearance verdict)')
     for label, samples in groups.items():
         print(f'{label}: n={len(samples)} interval_time={duration[label]:.3f}s '
               f'truth_distance={distance[label]:.3f}m')

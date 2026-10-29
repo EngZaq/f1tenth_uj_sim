@@ -127,7 +127,8 @@ class ObserverRoutingTest(unittest.TestCase):
             return NS(returncode=0, stdout=out, stderr='')
         def start(name, args):
             starts.append(name)
-            module.PROCS[name] = NS(poll=lambda: None)
+            module.PROCS[name] = (NS(poll=lambda: 0, returncode=0)
+                                  if name == 'stationary_probe' else NS(poll=lambda: None))
         ticks = iter([i*.1 for i in range(100)])
         with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
             stack.enter_context(patch.object(module, 'RUN', Path(directory)))

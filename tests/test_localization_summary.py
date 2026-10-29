@@ -22,6 +22,26 @@ def sample(t, x=0.0, y=0.0, lag=0.001, error=0.0):
 
 
 class SummaryTest(unittest.TestCase):
+    def test_sparse_truth_endpoints_are_reported_without_motion_classification(self):
+        rows = [sample(1., x=2., y=3.), sample(2.7, x=2., y=3.)]
+        result = SUMMARY.sampled_truth_span(rows)
+        self.assertEqual(result['samples'], 2)
+        self.assertAlmostEqual(result['span_s'], 1.7)
+        self.assertEqual(result['max_displacement_m'], 0.)
+        groups, counts, _, _ = SUMMARY.motion_audit(rows)
+        self.assertFalse(groups['MOVING'])
+        self.assertFalse(groups['STATIONARY'])
+        self.assertEqual(counts['gap'], 1)
+
+    def test_covariance_projection_and_invalid_matrix(self):
+        row = dict(amcl_cov_xx=.01, amcl_cov_xy=.006, amcl_cov_yx=.006,
+                   amcl_cov_yy=.04, amcl_yaw_deg=90.)
+        forward, left = SUMMARY.vehicle_covariance_sigma(row)
+        self.assertAlmostEqual(forward, .2)
+        self.assertAlmostEqual(left, .1)
+        self.assertIsNone(SUMMARY.vehicle_covariance_sigma(dict(row, amcl_cov_xy=1., amcl_cov_yx=1.)))
+        self.assertIsNone(SUMMARY.vehicle_covariance_sigma(dict(row, amcl_cov_xy=.007)))
+
     def test_stationary_samples_cannot_hide_moving_error(self):
         # A long preparation period must not dominate the moving-only result.
         rows = [sample(100+i*.1) for i in range(101)]

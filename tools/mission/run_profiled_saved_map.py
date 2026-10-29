@@ -122,6 +122,8 @@ def main():
               ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',ROOT/'tools/localization/sim_localization_audit.py',MISSION/'mission_amcl.launch.py',
               MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml',
               ROOT/'tools/localization/initialize_amcl_pose.py']
+    if args.localization_only:
+        required.append(ROOT/'tools/localization/stationary_localization_probe.py')
     for f in required:
         if not f.exists():raise RuntimeError(f'Missing {f}')
     sim=call(['ros2','topic','info','/ego_racecar/odom'],check=False)
@@ -193,18 +195,20 @@ def main():
     if args.localization_only:
         print(f'LOCALIZATION ONLY: observing for {args.observe_seconds:.1f}s. '
               'No autonomous controller is started; no arm request is sent.',flush=True)
-        deadline=time.monotonic()+args.observe_seconds
-        refresh_at=0.0
-        while time.monotonic()<deadline:
+        start('stationary_probe',['python3','-u',
+              ROOT/'tools/localization/stationary_localization_probe.py',
+              '--duration',args.observe_seconds,'--refresh-period',0.30,
+              '--output',RUN/'stationary_probe.json'])
+        deadline=time.monotonic()+args.observe_seconds+15.0
+        while PROCS['stationary_probe'].poll() is None:
+            if time.monotonic()>deadline:
+                raise RuntimeError('Stationary probe exceeded its observation deadline')
             for name in ('amcl','ekf','scan_relay','sensor_emulator','localization_audit'):
                 if PROCS[name].poll() is not None:
                     raise RuntimeError(f'{name} exited during stationary observation')
-            now=time.monotonic()
-            if now-refresh_at>=1.0:
-                call(['ros2','service','call','/request_nomotion_update',
-                      'std_srvs/srv/Empty','{}'],timeout=5)
-                refresh_at=time.monotonic()
             time.sleep(.1)
+        if PROCS['stationary_probe'].returncode:
+            raise RuntimeError('Stationary probe failed; see stationary_probe.log')
         print('STATIONARY OBSERVATION COMPLETE; review truth audit before driving.',flush=True)
         return
     start('autonomous_drive',['python3','-u',ROOT/'tools/navigation/profiled_amcl_drive.py',

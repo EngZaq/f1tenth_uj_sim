@@ -5,6 +5,10 @@ CSV, 1,191-row controller CSV, AMCL/EKF/controller logs, runtime YAML and scan
 seed. Input checksums and exact numeric results are in
 [the metrics record](evidence/profiled_20261029_142531_metrics.json).
 
+Follow-up: the stationary seed check has now been performed. See
+[its findings and updated probe](2026-10-29-stationary-seed-check-findings.md)
+for the verified initialization, remaining estimator shift and next procedure.
+
 ![Recorded localization and controller behavior](evidence/profiled_20261029_142531_analysis.png)
 
 ## What the data establishes
