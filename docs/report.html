@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="University of Jordan - Mechatronics Engineering Graduation Project" />
+  <meta name="dcterms.date" content="2026-10-28" />
+  <title>UJ F1TENTH | Autonomous Racing Simulator</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">UJ F1TENTH | Autonomous Racing Simulator</h1>
+<p class="subtitle">Engineering development, SLAM mapping, localization,
+control, experiments and transition to the physical car</p>
+<p class="author">University of Jordan - Mechatronics Engineering
+Graduation Project</p>
+<p class="date">28 October 2026</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#executive-summary" id="toc-executive-summary">Executive
+summary</a>
+<ul>
+<li><a href="#current-acceptance-ledger"
+id="toc-current-acceptance-ledger">Current acceptance ledger</a></li>
+</ul></li>
+<li><a href="#project-scope-and-operating-concept"
+id="toc-project-scope-and-operating-concept">1. Project scope and
+operating concept</a>
+<ul>
+<li><a href="#why-the-simulator-is-necessary"
+id="toc-why-the-simulator-is-necessary">1.1 Why the simulator is
+necessary</a></li>
+<li><a href="#physical-f1tenth-design-context"
+id="toc-physical-f1tenth-design-context">1.2 Physical F1TENTH design
+context</a></li>
+</ul></li>
+<li><a href="#software-computer-setup-and-repository"
+id="toc-software-computer-setup-and-repository">2. Software, computer
+setup and repository</a>
+<ul>
+<li><a href="#development-environment"
+id="toc-development-environment">2.1 Development environment</a></li>
+<li><a href="#workspace-conventions" id="toc-workspace-conventions">2.2
+Workspace conventions</a></li>
+</ul></li>
+<li><a href="#end-to-end-autonomy-architecture"
+id="toc-end-to-end-autonomy-architecture">3. End-to-end autonomy
+architecture</a>
+<ul>
+<li><a href="#data-flow-and-frame-ownership"
+id="toc-data-flow-and-frame-ownership">3.1 Data flow and frame
+ownership</a></li>
+<li><a href="#important-topics-messages-and-transforms"
+id="toc-important-topics-messages-and-transforms">3.2 Important topics,
+messages and transforms</a></li>
+<li><a href="#engineering-mathematics"
+id="toc-engineering-mathematics">3.3 Engineering mathematics</a></li>
+</ul></li>
+<li><a href="#maps-datasets-and-track-families"
+id="toc-maps-datasets-and-track-families">4. Maps, datasets and track
+families</a>
+<ul>
+<li><a href="#simulator-maps-and-known-track-data"
+id="toc-simulator-maps-and-known-track-data">4.1 Simulator maps and
+known-track data</a></li>
+<li><a href="#newly-explored-map-and-recovered-route"
+id="toc-newly-explored-map-and-recovered-route">4.2 Newly explored map
+and recovered route</a></li>
+<li><a href="#map-and-path-file-formats"
+id="toc-map-and-path-file-formats">4.3 Map and path file
+formats</a></li>
+</ul></li>
+<li><a href="#chronological-engineering-development"
+id="toc-chronological-engineering-development">5. Chronological
+engineering development</a>
+<ul>
+<li><a
+href="#day-1-26-october---baseline-setup-maps-and-localization-alternatives"
+id="toc-day-1-26-october---baseline-setup-maps-and-localization-alternatives">Day
+1: 26 October - baseline setup, maps and localization
+alternatives</a></li>
+<li><a href="#day-2-27-october---controlled-estimation-experiments"
+id="toc-day-2-27-october---controlled-estimation-experiments">Day 2: 27
+October - controlled estimation experiments</a></li>
+<li><a
+href="#day-3-28-october---fused-navigation-complete-estimated-lap-and-integrated-mission"
+id="toc-day-3-28-october---fused-navigation-complete-estimated-lap-and-integrated-mission">Day
+3: 28 October - fused navigation, complete estimated lap and integrated
+mission</a></li>
+</ul></li>
+<li><a href="#test-methodology-and-quantitative-results"
+id="toc-test-methodology-and-quantitative-results">6. Test methodology
+and quantitative results</a>
+<ul>
+<li><a href="#experiment-boundaries" id="toc-experiment-boundaries">6.1
+Experiment boundaries</a></li>
+<li><a href="#earlier-mappingracing-baseline"
+id="toc-earlier-mappingracing-baseline">6.2 Earlier mapping/racing
+baseline</a></li>
+<li><a href="#ekf-plus-amcl-under-sensor-bias"
+id="toc-ekf-plus-amcl-under-sensor-bias">6.3 EKF plus AMCL under sensor
+bias</a></li>
+<li><a href="#shadow-steering-and-error-decomposition"
+id="toc-shadow-steering-and-error-decomposition">6.4 Shadow steering and
+error decomposition</a></li>
+<li><a href="#first-lap-mission-recovery-and-latest-stopped-test"
+id="toc-first-lap-mission-recovery-and-latest-stopped-test">6.5
+First-lap mission, recovery and latest stopped test</a></li>
+</ul></li>
+<li><a href="#the-unknown-track-mission-exact-state-sequence"
+id="toc-the-unknown-track-mission-exact-state-sequence">7. The
+unknown-track mission: exact state sequence</a></li>
+<li><a href="#operational-runbook---exact-commands"
+id="toc-operational-runbook---exact-commands">8. Operational runbook -
+exact commands</a>
+<ul>
+<li><a href="#starting-any-normal-simulator-session"
+id="toc-starting-any-normal-simulator-session">8.1 Starting any normal
+simulator session</a></li>
+<li><a
+href="#oracle-pure-pursuit-baseline-evaluation-not-autonomous-localization"
+id="toc-oracle-pure-pursuit-baseline-evaluation-not-autonomous-localization">8.2
+Oracle-Pure-Pursuit baseline (evaluation, not autonomous
+localization)</a></li>
+<li><a href="#fusion-and-amcl-testing-as-individual-nodes"
+id="toc-fusion-and-amcl-testing-as-individual-nodes">8.3 Fusion and AMCL
+testing as individual nodes</a></li>
+<li><a href="#known-map-closed-loop-estimated-pose-lap-demonstrated"
+id="toc-known-map-closed-loop-estimated-pose-lap-demonstrated">8.4
+Known-map closed-loop estimated-pose lap (demonstrated)</a></li>
+<li><a
+href="#first-lap-unknown-track-exploration-and-mapping-demonstrated-through-saving"
+id="toc-first-lap-unknown-track-exploration-and-mapping-demonstrated-through-saving">8.5
+First-lap unknown-track exploration and mapping (demonstrated through
+saving)</a></li>
+<li><a href="#offline-recovery---no-simulator-and-no-driving-required"
+id="toc-offline-recovery---no-simulator-and-no-driving-required">8.6
+Offline recovery - no simulator and no driving required</a></li>
+<li><a
+href="#resuming-the-recovered-map-after-a-restart-partial-success"
+id="toc-resuming-the-recovered-map-after-a-restart-partial-success">8.7
+Resuming the recovered map after a restart (partial success)</a></li>
+<li><a href="#safely-stopping-the-workspace"
+id="toc-safely-stopping-the-workspace">8.8 Safely stopping the
+workspace</a></li>
+</ul></li>
+<li><a href="#the-generated-packages-and-their-roles"
+id="toc-the-generated-packages-and-their-roles">9. The generated
+packages and their roles</a></li>
+<li><a href="#failure-analysis-and-safeguards"
+id="toc-failure-analysis-and-safeguards">10. Failure analysis and
+safeguards</a></li>
+<li><a href="#what-can-be-tested-with-the-simulator"
+id="toc-what-can-be-tested-with-the-simulator">11. What can be tested
+with the simulator?</a></li>
+<li><a href="#transition-plan-simulator-to-the-physical-race-car"
+id="toc-transition-plan-simulator-to-the-physical-race-car">12.
+Transition plan: simulator to the physical race car</a>
+<ul>
+<li><a href="#phase-0-bench-safety-and-electrical-system"
+id="toc-phase-0-bench-safety-and-electrical-system">Phase 0: bench
+safety and electrical system</a></li>
+<li><a href="#phase-1-hardware-drivers-without-autonomy"
+id="toc-phase-1-hardware-drivers-without-autonomy">Phase 1: hardware
+drivers, without autonomy</a></li>
+<li><a href="#phase-2-physical-local-odometry"
+id="toc-phase-2-physical-local-odometry">Phase 2: physical local
+odometry</a></li>
+<li><a href="#phase-3-physical-mapping-and-global-localization"
+id="toc-phase-3-physical-mapping-and-global-localization">Phase 3:
+physical mapping and global localization</a></li>
+<li><a href="#phase-4-guarded-physical-autonomous-operation"
+id="toc-phase-4-guarded-physical-autonomous-operation">Phase 4: guarded
+physical autonomous operation</a></li>
+<li><a href="#phase-5-racing-research-and-optimization"
+id="toc-phase-5-racing-research-and-optimization">Phase 5: racing
+research and optimization</a></li>
+</ul></li>
+<li><a href="#next-session-action-plan-and-acceptance-gates"
+id="toc-next-session-action-plan-and-acceptance-gates">13. Next-session
+action plan and acceptance gates</a></li>
+<li><a href="#risks-open-research-questions-and-honest-limitations"
+id="toc-risks-open-research-questions-and-honest-limitations">14. Risks,
+open research questions and honest limitations</a></li>
+<li><a
+href="#repository-preservation-version-control-and-review-procedure"
+id="toc-repository-preservation-version-control-and-review-procedure">15.
+Repository preservation, version control and review procedure</a></li>
+<li><a href="#appendix-a.-reproducible-logging-and-evidence-matrix"
+id="toc-appendix-a.-reproducible-logging-and-evidence-matrix">Appendix
+A. Reproducible logging and evidence matrix</a></li>
+<li><a href="#appendix-b.-suggested-supervisor-demonstration"
+id="toc-appendix-b.-suggested-supervisor-demonstration">Appendix B.
+Suggested supervisor demonstration</a></li>
+<li><a href="#appendix-c.-glossary"
+id="toc-appendix-c.-glossary">Appendix C. Glossary</a></li>
+<li><a href="#references-and-reproducibility-pointers"
+id="toc-references-and-reproducibility-pointers">References and
+reproducibility pointers</a></li>
+</ul>
+</nav>
+<h1 id="executive-summary">Executive summary</h1>
+<p><strong>Project objective.</strong> Develop a reproducible research
+and engineering platform for a 1/10-scale Ackermann-steered autonomous
+vehicle. The complete target mission is: enter an unfamiliar closed
+circuit; use LiDAR to navigate a first exploratory lap; construct a
+metric occupancy map with SLAM; detect and validate a loop; extract a
+drivable closed trajectory and speed profile; use wheel/IMU odometry and
+LiDAR-based localization on that saved map; and autonomously traverse
+the circuit. The simulation work is also the commissioning environment
+for the University of Jordan F1TENTH physical prototype.</p>
+<p><strong>Assessment at the end of 28 October 2026.</strong> The system
+has demonstrated (1) LiDAR-only local navigation in an initially
+unmapped simulator circuit, (2) SLAM map saving, (3) a valid
+clearance-first 377-point, 37.67 m centerline recovered from the first
+mapping lap, (4) a kinematically feasible 37.58 m variant checked
+against a 24-degree steering constraint, (5) independent simulated
+wheel/IMU fusion with an EKF, (6) AMCL map localization, and (7) a
+complete <em>separate known-map</em> estimated-pose autonomous lap at
+0.35 m/s. A resumed autonomous attempt <strong>on the newly explored and
+recovered map</strong> progressed to waypoint <strong>56/377</strong> at
+0.15 m/s, then stopped on cross-track error and stale AMCL pose. The
+combined exploration-to-racing mission has <strong>not</strong> yet
+completed an end-to-end autonomous lap. No physical car actuation or
+real-sensor commissioning is claimed.</p>
+<p><strong>Three principal contributions.</strong> First, the team
+decoupled simulator truth from the navigation estimator: noisy VESC-like
+velocity and IMU angular-rate measurements are fused by
+robot_localization, and AMCL corrects the local odometry with a saved
+LiDAR map. Second, the first-lap mission connects exploration, SLAM, map
+saving, centerline extraction, map-relative localization and Pure
+Pursuit into one software workflow with explicit state gates. Third, a
+failure on a genuine saved SLAM map led to a clearance-first
+path-extraction method and an independent steering-feasibility
+correction. The corrected path was evaluated against real
+occupied/unknown grid cells rather than by artificially clearing
+unobserved areas.</p>
+<p><strong>Research integrity.</strong> Every reported measurement is
+labeled by test conditions. Ground-truth odometry is still present in
+the simulation for an oracle baseline and for the <em>sensor
+emulator</em>, but it is not used as the driving state in the
+estimated-pose controller. Estimated cross-track error is <em>not</em>
+equivalent to measured simulator-truth tracking error. A grid-based 0.30
+m centerline clearance is <em>not</em> a guarantee of 0.30 m clearance
+around the full car body.</p>
+<h2 id="current-acceptance-ledger">Current acceptance ledger</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Milestone</th>
+<th>Status</th>
+<th>Evidence / limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Technical simulator and Foxglove</td>
+<td>Demonstrated</td>
+<td>Gym bridge, map and ROS topics available</td>
+</tr>
+<tr class="even">
+<td>Known-track Pure Pursuit with oracle state</td>
+<td>Demonstrated</td>
+<td>5 consecutive laps, 26.5 s in earlier setup; later ~29.2 s at
+reduced profile</td>
+</tr>
+<tr class="odd">
+<td>Generated and saved first SLAM track</td>
+<td>Demonstrated</td>
+<td><code>.yaml</code> + <code>.pgm</code>; original serialized graph
+also saved in earlier workflow</td>
+</tr>
+<tr class="even">
+<td>Wheel/IMU emulator and EKF</td>
+<td>Demonstrated in simulation</td>
+<td>Biased/unbiased tests; no physical VESC telemetry yet</td>
+</tr>
+<tr class="odd">
+<td>AMCL map localization</td>
+<td>Demonstrated with limitations</td>
+<td>Typical 0.21-0.25 m error; occasional severe localization
+failure</td>
+</tr>
+<tr class="even">
+<td>Estimated-pose closed-loop known-map lap</td>
+<td>Demonstrated</td>
+<td>Complete lap, 0.35 m/s, safety-gated, 344-point reference</td>
+</tr>
+<tr class="odd">
+<td>First-lap autonomous unknown-track traversal</td>
+<td>Demonstrated once</td>
+<td>34.422 m estimated odometry travel; return within 0.85 m</td>
+</tr>
+<tr class="even">
+<td>Clearance-first generated map route</td>
+<td>Demonstrated offline</td>
+<td>377 points, 37.67 m, 0.30 m sampled grid clearance</td>
+</tr>
+<tr class="odd">
+<td>Feasible steering route</td>
+<td>Geometrically validated</td>
+<td>377 points, 37.579 m, &lt;=21.43 deg peak dense-sampled
+steering</td>
+</tr>
+<tr class="even">
+<td>New-map resumed autonomous lap</td>
+<td>Partial / blocked</td>
+<td>Stopped at index 56/377, estimated CTE 0.170 m; AMCL then stale</td>
+</tr>
+<tr class="odd">
+<td>Physical Jetson/LiDAR/VESC/servo integration</td>
+<td>Not established here</td>
+<td>Bench bring-up, calibration, independent E-stop required</td>
+</tr>
+</tbody>
+</table>
+<h1 id="project-scope-and-operating-concept">1. Project scope and
+operating concept</h1>
+<h2 id="why-the-simulator-is-necessary">1.1 Why the simulator is
+necessary</h2>
+<p>The simulator is not merely a visualization: it provides a repeatable
+test bench for the perception, estimation, planning and control software
+before hardware risk is introduced. We can vary track width and shape,
+LiDAR characteristics, steering and speed, odometry noise and bias, map
+completeness, localization initialization and controller gains. It gives
+deterministic oracle measurements for <em>evaluation</em>, while a
+separate constrained estimated-state pipeline can be tested
+independently. The same ROS topic and frame interfaces are intended to
+transfer to a Jetson.</p>
+<p>There are three distinct navigation problems.
+<strong>Exploration</strong> selects a locally traversable direction
+when no global map/route is available. <strong>SLAM</strong> estimates a
+map while resolving pose drift and loop closure. <strong>Localization
+and racing</strong> use a validated saved map and a path in its
+coordinate frame to perform controlled laps. Confusing these stages led
+to previous map-frame errors and unsafe path choices, so the mission
+runs them in strict phases.</p>
+<h2 id="physical-f1tenth-design-context">1.2 Physical F1TENTH design
+context</h2>
+<p>The planned platform is a roughly 1/10-scale Ackermann car with
+approximately 0.3302 m wheelbase. Planned hardware includes Jetson Orin
+Nano 8 GB (Ubuntu 22.04 and ROS 2 Humble), LakiBeam L1 LiDAR, a
+VESC-compatible brushless motor controller (Makerbase VESC MINI 6.7 Pro
+candidate), a brushless propulsion motor (DYS D3542 1450 KV candidate),
+a high-torque FT5330M steering servo, and an IMU whose final model and
+calibration remain to be fixed. These are the intended integration
+targets, not proof of installed or tested electrical interfaces. The
+steering servo needs an independent appropriately rated supply and a
+validated PWM signal path; Jetson GPIO is not a drop-in servo-power
+supply.</p>
+<p>The development stack currently uses a simulator sensor emulator
+rather than the actual VESC, IMU or LakiBeam. The motor gear ratio,
+wheel diameter, pole pairs, encoder count and servo endpoints must be
+measured or validated on the real chassis rather than copied blindly
+from simulation constants.</p>
+<h1 id="software-computer-setup-and-repository">2. Software, computer
+setup and repository</h1>
+<h2 id="development-environment">2.1 Development environment</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Current setup / role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>OS</td>
+<td>Ubuntu Linux development laptop; ROS 2 Humble</td>
+</tr>
+<tr class="even">
+<td>ROS workspace</td>
+<td><code>~/f1tenth_sim</code></td>
+</tr>
+<tr class="odd">
+<td>Shell</td>
+<td>zsh; <code>source scripts/sim_env.zsh</code></td>
+</tr>
+<tr class="even">
+<td>ROS domain</td>
+<td><code>ROS_DOMAIN_ID=42</code></td>
+</tr>
+<tr class="odd">
+<td>RMW</td>
+<td><code>rmw_cyclonedds_cpp</code></td>
+</tr>
+<tr class="even">
+<td>Python</td>
+<td>Workspace <code>.venv</code>, ROS 2 Python libraries and scientific
+stack</td>
+</tr>
+<tr class="odd">
+<td>Simulator</td>
+<td><code>f1tenth_gym</code> through ROS bridge
+(<code>f1tenth_gym_ros</code>)</td>
+</tr>
+<tr class="even">
+<td>Visualization</td>
+<td>Foxglove via ROS Foxglove bridge on WebSocket 8765</td>
+</tr>
+<tr class="odd">
+<td>Estimation</td>
+<td><code>robot_localization</code> EKF, Nav2 AMCL,
+<code>slam_toolbox</code></td>
+</tr>
+<tr class="even">
+<td>Mapping</td>
+<td>Occupancy-grid <code>.yaml</code> and <code>.pgm</code>, optional
+serialized SLAM graph</td>
+</tr>
+<tr class="odd">
+<td>Planning</td>
+<td>NumPy, SciPy, scikit-image, Pillow and PyYAML</td>
+</tr>
+<tr class="even">
+<td>Repository</td>
+<td><code>https://github.com/EngZaq/f1tenth_uj_sim</code></td>
+</tr>
+</tbody>
+</table>
+<p>As checked on 28 October, the public <code>main</code> branch pointed
+to commit <code>68ec82891f593d87b9626352cc21576b7270200a</code> from 27
+October. Its README still describes an earlier phase. The newer mission,
+EKF, AMCL and route artifacts exist in the local workspace/packages and
+must be committed from the laptop before the remote can be described as
+up to date. The physical-car codebase is a separate repository,
+<code>EngZaq/f1tenth_uj</code>, and should not be confused with this
+simulator workspace.</p>
+<h2 id="workspace-conventions">2.2 Workspace conventions</h2>
+<pre class="text"><code>~/f1tenth_sim/
+  scripts/                       Environment, simulator, combined launchers
+    sim_env.zsh                 Source ROS + venv + DDS settings
+    run_sim.zsh                 Gym + bridge + Foxglove
+    run_autonomous_amcl_sim.zsh Known-map estimated-pose controller launcher
+    run_unknown_track_mission.zsh  Exploration -&gt; mapping -&gt; handoff
+    run_resume_saved_track.zsh  Resume the generated map after simulator restart
+  src/f1tenth_control/          Original racing Pure Pursuit ROS package
+  tools/
+    exploration/               Gap-following and experimental arc planners
+    fusion/                    VESC/IMU sensor emulator, evaluation
+    localization/              Scan relay, AMCL experiments, shadow comparison
+    planning/                  Centerline, registration, speed-profile tools
+    mission/                   First-lap watcher, mission runner, saved-map resume
+  config/                       EKF, simulated sensor, AMCL, SLAM settings
+  maps/                         Simulator track fixtures
+  reference/generated/          Known-map path and speed profile
+  results/mapping/              Generated historic SLAM map / graph
+  results/localization/         EKF/AMCL, shadow and controller CSV results
+  results/missions/20261028_112407/
+    new_track.yaml              First-lap SLAM metadata
+    new_track.pgm               First-lap occupancy raster
+    lap_pose.json               Loop detection and SLAM-frame finish pose
+    new_track_centerline.csv    Clearance-first path, original orientation
+    new_track_mission_forward.csv  Explorer travel direction
+    new_track_speed_profile.csv Planned conservative velocities
+    new_track_mission_forward_feasible.csv  Corrected route
+    new_track_preview.png       Map/path visual evidence
+    new_track_diagnostic.png    Earlier failed extraction diagnosis
+    resume_*/                   Saved-map driving attempt logs</code></pre>
+<p>ROS <code>build/</code>, <code>install/</code>, <code>log/</code>,
+<code>.venv/</code> and Python caches are generated, and should not be
+committed. <code>src/f1tenth_gym_ros/</code> is ignored as a separately
+managed simulation dependency in the current repository; clean clone
+reproducibility requires documenting how that dependency is obtained and
+built.</p>
+<h1 id="end-to-end-autonomy-architecture">3. End-to-end autonomy
+architecture</h1>
+<figure>
+<img src="assets/architecture.png"
+alt="Navigation data-flow architecture" />
+<figcaption aria-hidden="true">Navigation data-flow
+architecture</figcaption>
+</figure>
+<h2 id="data-flow-and-frame-ownership">3.1 Data flow and frame
+ownership</h2>
+<p><strong>First lap, unknown map.</strong> The local explorer reads
+<code>/scan</code> directly and chooses a collision-averse direction,
+publishing <code>/drive</code> <em>only in the simulator</em>. The
+virtual VESC/IMU producer converts simulation state into noisy
+wheel-speed and yaw-rate sensor messages. The EKF estimates
+<code>fusion_odom -&gt; fusion_base</code>. The independent scan relay
+gives <code>/fusion/scan</code> the <code>fusion_laser</code> frame.
+SLAM Toolbox consumes fused local odometry and LiDAR and owns
+<code>slam_map -&gt; fusion_odom</code>; it publishes the mapping
+occupancy grid on <code>/mission/slam_map</code>. A first-lap watcher
+measures loop-return conditions from EKF/SLAM, not from oracle
+odometry.</p>
+<p><strong>Saved-map lap.</strong> Stop SLAM Toolbox before starting
+AMCL; otherwise the same <code>slam_map -&gt; fusion_odom</code> TF edge
+may have competing publishers. AMCL and the map server load the saved
+<code>new_track.yaml</code>, consume <code>/fusion/scan</code> and fused
+odometry, and own the global map correction. The driving controller asks
+TF for <code>slam_map -&gt; fusion_base</code>, computes Pure Pursuit in
+the identical map frame as the generated route, and publishes
+<code>/drive</code> with a watchdog and explicit operator enable.</p>
+<p><strong>Oracle branch.</strong> <code>/ego_racecar/odom</code> is
+simulator ground truth. It is allowed into the sensor emulator to
+synthesize readings and into evaluation tools to calculate errors. It is
+not allowed directly into the estimated-pose steering or first-lap path
+planner. The old oracle controller intentionally uses it as a baseline
+and must never run concurrently with the estimated-pose controller.</p>
+<h2 id="important-topics-messages-and-transforms">3.2 Important topics,
+messages and transforms</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Message / transform</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/scan</code></td>
+<td><code>sensor_msgs/msg/LaserScan</code></td>
+<td>Simulator laser; <code>ego_racecar/laser</code> frame</td>
+</tr>
+<tr class="even">
+<td><code>/fusion/scan</code></td>
+<td><code>sensor_msgs/msg/LaserScan</code></td>
+<td>Rate-controlled scan in <code>fusion_laser</code> frame</td>
+</tr>
+<tr class="odd">
+<td><code>/ego_racecar/odom</code></td>
+<td><code>nav_msgs/msg/Odometry</code></td>
+<td>Privileged simulator reference/evaluation</td>
+</tr>
+<tr class="even">
+<td><code>/odometry/filtered</code></td>
+<td><code>nav_msgs/msg/Odometry</code></td>
+<td>EKF fused local odometry</td>
+</tr>
+<tr class="odd">
+<td><code>fusion_odom -&gt; fusion_base</code></td>
+<td>TF</td>
+<td>Local odometry transform; EKF owner</td>
+</tr>
+<tr class="even">
+<td><code>fusion_base -&gt; fusion_laser</code></td>
+<td>Static TF</td>
+<td>Relay laser extrinsic, currently +0.275 m x</td>
+</tr>
+<tr class="odd">
+<td><code>/mission/slam_map</code></td>
+<td><code>nav_msgs/msg/OccupancyGrid</code></td>
+<td>Current first-lap SLAM map</td>
+</tr>
+<tr class="even">
+<td><code>/fusion/localization_map</code></td>
+<td><code>nav_msgs/msg/OccupancyGrid</code></td>
+<td>Saved occupancy map for AMCL</td>
+</tr>
+<tr class="odd">
+<td><code>/amcl_pose</code></td>
+<td><code>geometry_msgs/msg/PoseWithCovarianceStamped</code></td>
+<td>Global map-relative pose + covariance</td>
+</tr>
+<tr class="even">
+<td><code>slam_map -&gt; fusion_odom</code></td>
+<td>TF</td>
+<td>SLAM during mapping OR AMCL afterward</td>
+</tr>
+<tr class="odd">
+<td><code>/drive</code></td>
+<td><code>ackermann_msgs/msg/AckermannDriveStamped</code></td>
+<td>Simulator actuation; exactly one active publisher</td>
+</tr>
+<tr class="even">
+<td><code>/amcl_drive/enable</code></td>
+<td><code>std_msgs/msg/Bool</code></td>
+<td>Operator enable/disable gate</td>
+</tr>
+<tr class="odd">
+<td><code>/ego_racecar/collision</code></td>
+<td><code>std_msgs/msg/Bool</code></td>
+<td>Simulator collision event / stop latch</td>
+</tr>
+<tr class="even">
+<td><code>/initialpose</code></td>
+<td><code>geometry_msgs/msg/PoseWithCovarianceStamped</code></td>
+<td>Optional pose reset; Foxglove can publish</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Laser-frame caveat.</strong> The observed
+<code>ego_racecar/base_link -&gt; ego_racecar/laser_model</code> URDF
+visual transform was <code>[+0.096,0,+0.122]</code> m, whereas
+<code>fusion_base -&gt; fusion_laser</code> currently uses
+<code>[+0.275,0,0]</code> m. However <code>/scan</code> was actually
+stamped <code>ego_racecar/laser</code>, <em>not</em>
+<code>laser_model</code>. Therefore these two measurements alone do not
+establish that the LiDAR relay is wrong; the actual laser ray origin and
+physical mount still require verification. Mapping and scan-based
+startup currently depend on a consistent +0.275 m assumption, so do not
+change only one component.</p>
+<h2 id="engineering-mathematics">3.3 Engineering mathematics</h2>
+<p>Bicycle kinematics (planar approximation):</p>
+<p><code>x_dot = v cos(psi)</code>, <code>y_dot = v sin(psi)</code>,
+<code>psi_dot = v tan(delta)/L</code>.</p>
+<p>Pure Pursuit chooses a target point at arc-length lookahead along the
+path. In vehicle coordinates, let its lateral offset be <code>y_L</code>
+and Euclidean distance <code>d_L</code>; commanded steering is
+<code>delta = atan(2 L y_L / d_L^2)</code>, saturated to the steering
+limit. The value <strong>L</strong> here denotes wheelbase; lookahead
+distance is a different parameter. At shorter lookahead the same 0.1-0.2
+m position error can create much larger steering differences.</p>
+<p>Geometric path feasibility uses
+<code>delta_required = atan(L * kappa)</code> where <code>kappa</code>
+is path curvature. A smooth path can be free of obstacles yet demand
+more curvature than the car can steer. The path planner therefore checks
+<strong>both</strong> known-free-space clearance and curvature/steering
+feasibility.</p>
+<p>For planning speed, a curvature-limited candidate is
+<code>v &lt;= sqrt(a_y_max/|kappa|)</code> and is further constrained by
+forward-acceleration and reverse-braking passes. The generated profile
+is a <em>planning artifact</em>; early estimated-pose tests deliberately
+use a lower <strong>constant speed cap</strong>, not this optimized
+profile.</p>
+<h1 id="maps-datasets-and-track-families">4. Maps, datasets and track
+families</h1>
+<h2 id="simulator-maps-and-known-track-data">4.1 Simulator maps and
+known-track data</h2>
+<p>The repository and development archives contain an oval-debug
+fixture, a technical-loop track (<code>uj_technical_loop_v1</code>), and
+generated centerlines. The technical simulator loads
+<code>maps/uj_technical_loop_v1.yaml</code>; its bridge begins near
+<code>(-5.80,-2.10,2.17 rad)</code>. A scaled simulator map for
+visualization was observed at <strong>720 x 480 cells</strong> with
+<strong>0.025 m</strong> resolution. This is <em>not</em> the SLAM
+occupancy grid.</p>
+<p>The earlier known-track SLAM result lives under
+<code>results/mapping/uj_technical_slam_01.yaml</code> and
+<code>.pgm</code>: <strong>287 x 183 cells</strong>, resolution
+<strong>0.05 m</strong>, origin <code>[-7.17,-4.44]</code>. Historical
+saved SLAM artifacts included <code>.posegraph</code> (~30 MB) and
+<code>.data</code> (~8.4 MB). The known-track centerline has
+<strong>344</strong> waypoints and an accompanying speed profile. For
+oracle racing only, a registered simulator-frame path was generated; the
+approximate SLAM-to-simulator rigid rotation is <strong>-2.2434
+degrees</strong> and translation <code>[+0.1397,-0.1590]</code> m. This
+registration is not used to localize the physical car.</p>
+<h2 id="newly-explored-map-and-recovered-route">4.2 Newly explored map
+and recovered route</h2>
+<p>During the first fully integrated unknown-track attempt, the system
+saved the map at
+<code>results/missions/20261028_112407/new_track.yaml</code> and
+<code>new_track.pgm</code>: <strong>225 x 296 cells</strong>,
+<strong>0.05 m</strong> resolution, and origin
+<code>[-6.61,-13.6,0]</code>. These are real output artifacts from the
+integrated mapping run, not an imported pre-existing track path.</p>
+<figure>
+<img src="assets/recovered_slam_centerline.png"
+alt="Recovered SLAM occupancy grid and 377-point centerline" />
+<figcaption aria-hidden="true">Recovered SLAM occupancy grid and
+377-point centerline</figcaption>
+</figure>
+<p>A standalone first-lap detector recorded <strong>34.422 m</strong>
+EKF-estimated travel, <strong>229.2 s</strong> elapsed, <strong>0.85
+m</strong> odometric distance to the departure location and <strong>14.0
+degrees</strong> return heading discrepancy. It saved a final pose
+approximately <code>(-4.299,-0.636,0.776 rad)</code> in the
+<code>slam_map</code> frame, after mapping settled. The return-to-start
+condition does not itself prove that the optimizer detected a globally
+consistent loop closure; map closure and path validation are separate
+acceptance tests.</p>
+<p>The V3 clearance-first extractor recovered a <strong>37.67
+m</strong>, <strong>377-point</strong> centerline with a minimum
+<strong>0.30 m grid-sampled distance</strong> from unknown/occupied
+cells and zero sampled crossings. It oriented the path to the explorer’s
+actual travel direction, with <strong>0.3-degree</strong>
+starting-heading mismatch. The length discrepancy against 34.422 m
+odometric travel reflects that the numbers describe <em>different
+geometries/estimators</em>, and is not by itself a failure.</p>
+<p>The generated path initially exceeded the car’s steering limit at
+four waypoints; dense sampling showed an equivalent peak command above
+40 degrees in the raw path. The steering-feasible correction created a
+<strong>37.579 m</strong> route, still <strong>377 waypoints</strong>,
+changing points by at most <strong>0.041 m</strong>. Its independent
+verification output reported <strong>21.43 degrees peak required
+steering at 5 mm sampling</strong>, <strong>0.300 m minimum sampled grid
+clearance</strong>, and <strong>zero occupied/unknown
+intersections</strong>. This is a geometrically feasible
+<strong>simulation route</strong>, not a guarantee of safe real-world
+clearance under localization error.</p>
+<figure>
+<img src="assets/steering_feasible_path.png"
+alt="Steering-feasible saved-map route overlay" />
+<figcaption aria-hidden="true">Steering-feasible saved-map route
+overlay</figcaption>
+</figure>
+<h2 id="map-and-path-file-formats">4.3 Map and path file formats</h2>
+<p>A ROS occupancy map is a paired YAML and raster: YAML gives image
+filename, meters/cell, origin and occupancy thresholds; the PGM encodes
+white known-free, black occupied and gray unknown cells. The saved YAML
+must resolve the saved raster path. A centerline CSV is seven
+<strong>semicolon-separated</strong> values per waypoint:
+<code>s_m;x_m;y_m;psi_rad;kappa_1pm;vx_mps;ax_mps2</code>; comment lines
+begin <code>#</code>. The separate speed-profile CSV records index,
+distance, XY, curvature, raw and planned speed. A lane centerline exists
+in <code>slam_map</code> coordinates, so every estimated-pose controller
+must use the map-frame variant, never simulator-frame registered
+waypoints.</p>
+<h1 id="chronological-engineering-development">5. Chronological
+engineering development</h1>
+<h2
+id="day-1-26-october---baseline-setup-maps-and-localization-alternatives">Day
+1: 26 October - baseline setup, maps and localization alternatives</h2>
+<p>The baseline environment, compatible technical/oval map packages,
+exploration proof of concept and SLAM mapping were assembled. Initial
+map-derived centerline and speed profile were built, and a frame
+mismatch was discovered when a SLAM-frame path was treated as
+simulator-frame coordinates. A simulator-assisted registration resolved
+the oracle-reference collision, but was recognized as a simulation-only
+development aid. The initial Pure Pursuit algorithm provided repeated
+low-error laps under privileged oracle pose. RF2O laser odometry,
+command-bicycle odometry and SLAM localization were investigated as
+independent pose candidates.</p>
+<h2 id="day-2-27-october---controlled-estimation-experiments">Day 2: 27
+October - controlled estimation experiments</h2>
+<p>The 27 October engineering log documents five oracle racing laps at
+~26.5 s with ~0.026 m mean CTE under one speed setting; a later
+lower-speed baseline measured ~29.2 s with ~0.027-0.028 m CTE. Earlier
+synchronized RF2O estimates were smooth but drifted, while direct SLAM
+localization produced occasional large pose jumps; simply increasing
+scan rates or replacing odometry with integrated commands did not solve
+this. This motivated the VESC-like wheel-speed and IMU emulator, EKF,
+map-relative AMCL particle filter, and paired logging strategy. A
+correct known-map frame alignment was established instead of accepting
+offline truth-based fixes in the production localization chain.</p>
+<h2
+id="day-3-28-october---fused-navigation-complete-estimated-lap-and-integrated-mission">Day
+3: 28 October - fused navigation, complete estimated lap and integrated
+mission</h2>
+<p>The EKF and AMCL were tested under both unbiased and deliberately
+biased simulated sensors. The shadow controller compared AMCL steering
+to oracle steering without acting on the simulator. A TF comparison
+showed that fresh combined TF barely improved mean disagreement,
+disproving a simplistic “use the latest transform” fix. Decomposed,
+timestamp-matched tests isolated position error as the main cause of
+steering sensitivity. Nevertheless, the guarded AMCL-controlled
+known-map driver <strong>completed an estimated lap at 0.35
+m/s</strong>: its log reached waypoint 341/344 and recorded
+<code>ESTIMATED LAP 1 COMPLETE</code>.</p>
+<p>The system then attempted an actual first-lap mission: LiDAR explorer
++ EKF + SLAM Toolbox built a new map; the loop detector stopped the
+explorer; the map server saved occupancy artifacts. The
+<strong>original</strong> skeleton extractor failed on branches. A
+spur-pruned V2 still failed a valid-clearance check, showing one
+candidate with 0.05 m clearance. Inspection of the actual saved grid led
+to the V3 clearance-first extractor, which produced the safe-zone
+centerline. A further curvature correction made the route kinematically
+feasible. A restart-aware map-scan matching initializer replaced blind
+reuse of the historical lap-finish pose. In the subsequent resumed drive
+at 0.15 m/s, the car reached waypoint <strong>56/377</strong> and
+stopped because estimated CTE reached <strong>0.170 m</strong>,
+exceeding the configured threshold (0.12 m), followed by AMCL pose
+staleness. The stopped vehicle did not resume. Thus the integrated path
+is available but the <em>new-map autonomous lap remains
+pending</em>.</p>
+<h1 id="test-methodology-and-quantitative-results">6. Test methodology
+and quantitative results</h1>
+<h2 id="experiment-boundaries">6.1 Experiment boundaries</h2>
+<p>A result is meaningful only with its input state source, map/frame,
+profile, speed cap, lookahead, run duration and whether the CTE is
+computed using oracle or estimated pose. We report localization
+<strong>absolute map-registered</strong> error separately from relative
+first-pose-aligned error, and do not substitute relative error for
+global correctness. Evaluators may read simulator truth offline; the
+production controller should not.</p>
+<h2 id="earlier-mappingracing-baseline">6.2 Earlier mapping/racing
+baseline</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Experiment</th>
+<th>Key outcome</th>
+<th>Qualification</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Early oracle lap sequence</td>
+<td>26.584, 26.537, 26.551, 26.540, 26.528 s</td>
+<td>Five consecutive lower-CTE laps; ~1.29 m/s mean commanded speed</td>
+</tr>
+<tr class="even">
+<td>Oracle lower-speed baseline</td>
+<td>~29.17-29.20 s/lap, mean CTE 0.027-0.028 m</td>
+<td>344-point registered path, ~1.18 m/s mean command</td>
+</tr>
+<tr class="odd">
+<td>Oracle lookahead 0.8 m</td>
+<td>29.018 s; mean CTE 0.044 m; max CTE 0.096 m</td>
+<td>Faster in that run but larger mean CTE than 0.5 m</td>
+</tr>
+<tr class="even">
+<td>Earlier RF2O synced</td>
+<td>1,549 samples; mean relative position error 0.285 m</td>
+<td>Smooth estimated motion; not robust global map localization</td>
+</tr>
+<tr class="odd">
+<td>Earlier SLAM synced</td>
+<td>554 samples; mean position error 0.649 m, max 1.806 m</td>
+<td>3 apparent &gt;3 m/s pose jumps, peak 17.33 m/s from
+corrections</td>
+</tr>
+</tbody>
+</table>
+<p>These were not matched controlled trials; speed setting, time and
+estimator configuration differed. They are development evidence, not
+statistical superiority claims.</p>
+<h2 id="ekf-plus-amcl-under-sensor-bias">6.3 EKF plus AMCL under sensor
+bias</h2>
+<figure>
+<img src="assets/bias_stress.png"
+alt="Biased-sensor experiment: local EKF drift versus map localization error; note that metrics use different references" />
+<figcaption aria-hidden="true">Biased-sensor experiment: local EKF drift
+versus map localization error; note that metrics use different
+references</figcaption>
+</figure>
+<p>In a roughly 176.2-second, 1,304-sample biased-sensor stress run, EKF
+relative position RMSE was <strong>0.764 m</strong>, while AMCL absolute
+map-registered RMSE was <strong>0.246 m</strong> (maximum <strong>0.432
+m</strong>, 95th percentile <strong>0.390 m</strong>). The paired AMCL
+<em>relative</em> RMSE was <strong>0.442 m</strong>, a distinct
+first-common-pose-aligned metric; do not compare that directly to
+absolute EKF values. Successive 30-second windows showed EKF relative
+RMSE increasing approximately
+<code>[0.348,0.467,0.606,0.782,0.892,1.068]</code> m, whereas AMCL
+absolute error stayed approximately
+<code>[0.121,0.256,0.249,0.242,0.251,0.264]</code> m. This supports the
+intended complementary roles of local odometry and global map
+corrections on the known technical loop. It does not demonstrate
+immunity from incorrect map hypotheses.</p>
+<p>A separate ~31.8-second unbiased run had AMCL absolute map-registered
+RMSE about <strong>0.236 m</strong>. Mean map path cross-track deviation
+of AMCL estimates was ~0.114 m, with a substantial along-track offset
+component. Offline lag analysis suggested about -0.10 s shift improved
+retrospective RMSE (0.236 to 0.205 m), but no oracle-based correction
+was introduced into online navigation.</p>
+<h2 id="shadow-steering-and-error-decomposition">6.4 Shadow steering and
+error decomposition</h2>
+<figure>
+<img src="assets/steering_sensitivity.png"
+alt="Pure Pursuit steering sensitivity to lookahead and estimated pose components" />
+<figcaption aria-hidden="true">Pure Pursuit steering sensitivity to
+lookahead and estimated pose components</figcaption>
+</figure>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 28%" />
+<col style="width: 28%" />
+<col style="width: 21%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test</th>
+<th style="text-align: right;">Mean absolute disagreement</th>
+<th style="text-align: right;">95th percentile</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Raw AMCL vs oracle, 0.5 m lookahead</td>
+<td style="text-align: right;">11.96 deg</td>
+<td style="text-align: right;">22.76 deg</td>
+<td>Position sensitivity significant</td>
+</tr>
+<tr class="even">
+<td>TF-fused vs oracle, 0.5 m lookahead</td>
+<td style="text-align: right;">11.84 deg</td>
+<td style="text-align: right;">22.21 deg</td>
+<td>Only ~0.13 deg improvement; TF age not root cause</td>
+</tr>
+<tr class="odd">
+<td>Decomposition, 0.5 m lookahead</td>
+<td style="text-align: right;">12.12 deg</td>
+<td style="text-align: right;">22.22 deg</td>
+<td>534 synchronized moving samples</td>
+</tr>
+<tr class="even">
+<td>Decomposition, 0.8 m lookahead</td>
+<td style="text-align: right;">6.14 deg</td>
+<td style="text-align: right;">11.15 deg</td>
+<td>Less sensitive; may cut more corners</td>
+</tr>
+<tr class="odd">
+<td>Decomposition, 1.0 m lookahead</td>
+<td style="text-align: right;">4.37 deg</td>
+<td style="text-align: right;">7.78 deg</td>
+<td>Lowest steering disagreement, not necessarily best CTE</td>
+</tr>
+</tbody>
+</table>
+<p>In the 534-sample decomposition run, average AMCL position error was
+<strong>0.223 m</strong>, heading error <strong>2.03 deg</strong>, and
+mean timestamp match error <strong>1.4 ms</strong>. With 0.5 m
+lookahead, position-only steering error averaged <strong>11.14
+deg</strong> and heading-only averaged <strong>2.21 deg</strong>. These
+error effects are not additive because Pure Pursuit is nonlinear. A
+separate failure run briefly produced <strong>8.771 m</strong> mean
+position error and <strong>136.22 deg</strong> heading error; repeated
+clean initialization returned to ~0.22 m. The cause of that transient
+gross mislocalization remains unresolved.</p>
+<h2 id="first-lap-mission-recovery-and-latest-stopped-test">6.5
+First-lap mission, recovery and latest stopped test</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Milestone / metric</th>
+<th>Recorded result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>First-lap explorer enabled speed</td>
+<td>Typically 0.11-0.18 m/s</td>
+</tr>
+<tr class="even">
+<td>Estimated first-lap distance</td>
+<td>34.422 m</td>
+</tr>
+<tr class="odd">
+<td>First-lap duration</td>
+<td>229.2 s</td>
+</tr>
+<tr class="even">
+<td>Return positional difference</td>
+<td>0.85 m in local odometry</td>
+</tr>
+<tr class="odd">
+<td>Return heading mismatch</td>
+<td>14.0 deg</td>
+</tr>
+<tr class="even">
+<td>Saved occupancy grid</td>
+<td>225 x 296 at 0.05 m/cell</td>
+</tr>
+<tr class="odd">
+<td>V1 extractor</td>
+<td>Failed: skeleton not a simple loop</td>
+</tr>
+<tr class="even">
+<td>V2 extractor</td>
+<td>Failed: min grid clearance 0.05 m on one collision-free sample
+path</td>
+</tr>
+<tr class="odd">
+<td>V3 clearance-first output</td>
+<td>377 points, 37.67 m, 0.30 m sampled clearance</td>
+</tr>
+<tr class="even">
+<td>Steering-feasible variant</td>
+<td>377 points, 37.579 m; 21.43 deg max dense-sampled steering</td>
+</tr>
+<tr class="odd">
+<td>New-map estimated drive</td>
+<td>0.15 m/s; waypoint 56/377 before stop</td>
+</tr>
+<tr class="even">
+<td>Primary stop reason</td>
+<td>Estimated CTE 0.170 m, exceeding 0.12 m configuration</td>
+</tr>
+<tr class="odd">
+<td>Subsequent stop reason</td>
+<td>AMCL pose stale (over 13 s in supplied log)</td>
+</tr>
+<tr class="even">
+<td>Concurrent frontal scan range at stop</td>
+<td>~0.55-0.57 m; not the trigger for the logged CTE stop</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Interpretation of latest stop.</strong> The controller’s
+safety gate correctly commanded 0 speed rather than driving through an
+uncertain position. After it stopped, pose freshness failed; this may be
+related to the AMCL update policy for a stationary robot, but the
+supplied log does not prove why updates ceased. The CTE spike can
+reflect path tracking, localization correction, narrow geometry, wrong
+seed or a mixture. The log does not demonstrate collision, nor does it
+prove the map is universally raceable. Do not increase the CTE threshold
+or suppress stale-pose checks just to complete a lap.</p>
+<h1 id="the-unknown-track-mission-exact-state-sequence">7. The
+unknown-track mission: exact state sequence</h1>
+<figure>
+<img src="assets/mission_flow.png" alt="Mission state machine" />
+<figcaption aria-hidden="true">Mission state machine</figcaption>
+</figure>
+<p><strong>Phase A - enter exploration.</strong> Assert
+<code>/drive</code> has no other publisher, all relevant nodes start
+cleanly and simulator track exists. Start simulated VESC/IMU, EKF, relay
+and SLAM Toolbox. Enable existing LiDAR gap-following explorer. No map
+is required as a path-planning input. The vehicle observes forward laser
+geometry and chooses a conservatively inflated feasible gap. The
+first-lap watcher records distance from an EKF origin, time since start,
+proximity to start and heading convergence. This is a track-loop
+heuristic, not generic map exploration.</p>
+<p><strong>Phase B - stop and commit map.</strong> When first-lap
+criteria are satisfied, explorer enters a persistent 20 Hz zero-velocity
+command state. Let SLAM settle, capture current global pose, call Nav2
+map saver on <code>/mission/slam_map</code>, and verify paired
+<code>.yaml</code>/<code>.pgm</code> files exist. Reaching the start
+does not automatically mean all unknown cells are observed.</p>
+<p><strong>Phase C - compute track route.</strong> Perform occupancy
+classification. Compute a distance-to-occupied-or-unknown grid. Erode to
+a known-free planning region with nominal 0.30 m clearance. Skeletonize
+<em>that safe region</em>, remove short dead-end spurs, search for
+closed-cycle candidates, choose an appropriate track-scale loop, smooth
+and resample, and validate dense path samples against occupied/unknown
+space. Orient the path according to the explorer travel tangent and
+generate curvature and speed profile. Verify steering demand with the
+car’s wheelbase and max steer, correcting infeasible tight segments only
+inside validated free space.</p>
+<p><strong>Phase D - hand off localization.</strong> Stop SLAM Toolbox
+so it relinquishes <code>slam_map -&gt; fusion_odom</code>. Start Nav2
+map server and AMCL against the just-saved occupancy grid. When
+continuing <em>without resetting</em> the simulator, capture a recent
+map-frame finish pose; when the simulator has restarted, do not reuse it
+as the current pose. Instead use the current <code>/fusion/scan</code>
+to match against the recovered map, bounded by a plausible initial
+region, and confirm AMCL agrees with the seed before arming.</p>
+<p><strong>Phase E - guarded autonomous lap.</strong> Start the
+controller disabled, check pose/scans/odometry freshness, covariance,
+map-relative CTE, forward clearance, collision flag, pose jumps and
+duplicate <code>/drive</code> publishers. After an explicit user enable,
+publish low-speed Pure Pursuit commands and track estimated waypoint
+progress. Stop on an estimated complete lap or any fault. The controller
+is currently simulation-only.</p>
+<h1 id="operational-runbook---exact-commands">8. Operational runbook -
+exact commands</h1>
+<h2 id="starting-any-normal-simulator-session">8.1 Starting any normal
+simulator session</h2>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_sim.zsh</span></code></pre></div>
+<p>In a separate <strong>zsh</strong> terminal:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> scripts/sim_env.zsh</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> topic info /drive</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> topic echo <span class="at">--once</span> /ego_racecar/odom <span class="at">--field</span> pose.pose</span></code></pre></div>
+<p>Before enabling a controller, verify that <code>/drive</code> has
+zero competing publishers. Do not combine a legacy oracle controller,
+explorer and AMCL driver. Foxglove is available through the simulator
+bridge; the browser visualization map and the SLAM map may be in
+different TF frames.</p>
+<h2
+id="oracle-pure-pursuit-baseline-evaluation-not-autonomous-localization">8.2
+Oracle-Pure-Pursuit baseline (evaluation, not autonomous
+localization)</h2>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> scripts/sim_env.zsh</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> src/f1tenth_control/f1tenth_control/racing_pure_pursuit.py <span class="dt">\</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--ros-args</span> <span class="dt">\</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> waypoints_file:=<span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/f1tenth_sim/reference/generated/uj_technical_slam_01_registered.csv&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> speed_profile_file:=<span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/f1tenth_sim/reference/generated/uj_technical_slam_01_speed_profile.csv&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> results_file:=<span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/f1tenth_sim/results/localization/oracle_baseline.csv&quot;</span> <span class="dt">\</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> use_speed_profile:=true <span class="dt">\</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> speed_scale:=1.0 <span class="dt">\</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">-p</span> lookahead_distance:=0.5</span></code></pre></div>
+<p>The controller uses <code>/ego_racecar/odom</code> and the
+<strong>registered simulator-frame</strong> path. Use this to benchmark
+controller quality and to compare later estimated-state methods, not as
+proof of perception autonomy.</p>
+<h2 id="fusion-and-amcl-testing-as-individual-nodes">8.3 Fusion and AMCL
+testing as individual nodes</h2>
+<p>Run each command in a <strong>separate sourced terminal</strong>
+following the simulator:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> tools/fusion/sim_vesc_imu.py <span class="at">--ros-args</span> <span class="dt">\</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--params-file</span> config/fusion_sim_sensors_unbiased.yaml</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> run robot_localization ekf_node <span class="at">--ros-args</span> <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--params-file</span> config/fusion_ekf.yaml</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> tools/localization/fusion_scan_relay.py</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> launch tools/localization/fusion_amcl.launch.py</span></code></pre></div>
+<p>These are four independent long-running processes; do not paste all
+sequentially into one terminal and expect the later commands to start.
+Verify:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> lifecycle get /fusion_map_server</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> lifecycle get /amcl</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> topic hz /fusion/scan</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> service list <span class="at">-t</span> <span class="kw">|</span> <span class="fu">grep</span> nomotion</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">ros2</span> topic echo <span class="at">--once</span> /amcl_pose <span class="at">--field</span> pose.pose</span></code></pre></div>
+<p>Both lifecycle nodes should show <code>active [3]</code>;
+<code>/fusion/scan</code> was typically ~8.1-8.4 Hz. With AMCL active, a
+stationary update can be requested via
+<code>ros2 service call /request_nomotion_update std_srvs/srv/Empty '{}'</code>.
+If no AMCL node exists, that service will not exist: the simulator’s own
+map server is not AMCL.</p>
+<h2 id="known-map-closed-loop-estimated-pose-lap-demonstrated">8.4
+Known-map closed-loop estimated-pose lap (demonstrated)</h2>
+<p>With old nodes stopped, use two terminals:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal A</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_sim.zsh</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal B</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_autonomous_amcl_sim.zsh</span></code></pre></div>
+<p>After the launcher verifies the stack and prints its stopped/disabled
+prompt, use <strong>Enter</strong> to enable simulation-only control. It
+uses <code>slam_map</code> path, AMCL+EKF TF and a conservative 0.35 m/s
+cap. A lap was observed as <code>ESTIMATED LAP 1 COMPLETE</code>. Always
+run the launcher only with the known-map configuration; it must not be
+used with a different path without confirming matching map and initial
+pose.</p>
+<h2
+id="first-lap-unknown-track-exploration-and-mapping-demonstrated-through-saving">8.5
+First-lap unknown-track exploration and mapping (demonstrated through
+saving)</h2>
+<p>After stopping every prior stack:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal A</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_sim.zsh</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal B</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_unknown_track_mission.zsh</span></code></pre></div>
+<p>The mission asks for Enter to start exploration. It then stops the
+explorer after its first-lap condition, saves a map and tries to
+generate a path. If path extraction fails, <strong>do not bypass
+clearance or allow racing</strong>. The first run saved
+<code>results/missions/20261028_112407/new_track.*</code> but did not
+automatically complete a second AMCL lap; that stage was repaired
+separately.</p>
+<h2 id="offline-recovery---no-simulator-and-no-driving-required">8.6
+Offline recovery - no simulator and no driving required</h2>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> scripts/sim_env.zsh</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> tools/mission/recover_saved_map.py <span class="dt">\</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  results/missions/20261028_112407</span></code></pre></div>
+<p>After installation of the V3 clearance-first extractor, this produced
+377 map-frame waypoints. The feasible-route package adds
+<code>new_track_mission_forward_feasible.csv</code> alongside, without
+replacing the original path. The verifier for the feasible route checks
+saved-map hashes and dense clearance/curvature. It does
+<strong>not</strong> validate AMCL initialization or real-life collision
+clearance.</p>
+<h2 id="resuming-the-recovered-map-after-a-restart-partial-success">8.7
+Resuming the recovered map after a restart (partial success)</h2>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal A</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_sim.zsh</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Terminal B</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">zsh</span> scripts/run_resume_saved_track.zsh</span></code></pre></div>
+<p>The runner starts emulator + EKF + scan relay, scans the
+<em>live</em> environment to seed localization near the saved map,
+launches AMCL against <code>new_track.yaml</code>, and loads
+<code>new_track_mission_forward_feasible.csv</code>. The operator must
+enable driving. Current conservative settings are <strong>0.15
+m/s</strong>, max estimated path error <strong>0.12 m</strong>, and
+front stop distance <strong>0.5 m</strong>. The last recorded run
+<strong>stopped at 56/377</strong> because estimated CTE reached 0.170
+m, followed by stale AMCL pose. Treat this as the reproducible starting
+point for the next development session, not a completed lap.</p>
+<h2 id="safely-stopping-the-workspace">8.8 Safely stopping the
+workspace</h2>
+<p>Use <code>Ctrl+C</code> in the active mission/controller terminal,
+then stop its simulator terminal. Confirm that the <code>/drive</code>
+topic no longer has an active nonzero-command publisher and that the
+relevant AMCL/SLAM nodes exited. Publishing a single zero message is
+useful but <strong>not a fail-safe physical emergency stop</strong>. Do
+not enable the physical motor controller until the hardware safety chain
+is separately commissioned.</p>
+<h1 id="the-generated-packages-and-their-roles">9. The generated
+packages and their roles</h1>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Package or tool</th>
+<th>Purpose</th>
+<th>Present maturity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>UJ_F1TENTH_Ready_Maps.zip</code> / compatible maps</td>
+<td>Technical and debug oval simulator tracks and map metadata</td>
+<td>Map fixtures</td>
+</tr>
+<tr class="even">
+<td><code>f1tenth_sim_runbook.zip</code></td>
+<td>Environment sourcing, simulator launch and checks</td>
+<td>Baseline developer tooling</td>
+</tr>
+<tr class="odd">
+<td><code>F1TENTH_VESC_IMU_EKF_Simulation.zip</code></td>
+<td>Simulated VESC/gyro messages, EKF params, metrics evaluation</td>
+<td>Simulated sensors only</td>
+</tr>
+<tr class="even">
+<td><code>amcl_shadow_pure_pursuit.py</code></td>
+<td>Compute shadow control from AMCL; never publish
+<code>/drive</code></td>
+<td>Diagnostic</td>
+</tr>
+<tr class="odd">
+<td><code>amcl_tf_shadow_compare.py</code></td>
+<td>Raw AMCL pose vs latest TF lookahead steering A/B</td>
+<td>Diagnostic</td>
+</tr>
+<tr class="even">
+<td><code>steering_error_decomposition.py</code></td>
+<td>Isolate position-only and yaw-only steering errors</td>
+<td>Diagnostic</td>
+</tr>
+<tr class="odd">
+<td><code>amcl_autonomous_sim_package.zip</code></td>
+<td>Actual low-speed, guarded AMCL/EKF simulator <code>/drive</code>
+controller</td>
+<td>Demonstrated known-map lap</td>
+</tr>
+<tr class="even">
+<td><code>unknown_track_to_amcl_mission.zip</code></td>
+<td>Orchestrated explore/map/plan/localize/drive sequence</td>
+<td>Mapping phase demonstrated; full second lap pending</td>
+</tr>
+<tr class="odd">
+<td><code>unknown_track_map_fix.zip</code></td>
+<td>Spur pruning; saved-map offline recovery</td>
+<td>Superseded V1</td>
+</tr>
+<tr class="even">
+<td><code>unknown_track_map_fix_v2.zip</code></td>
+<td>Progressive spline/linear smoothing with clearance diagnosis</td>
+<td>Failed safely on first actual saved map</td>
+</tr>
+<tr class="odd">
+<td><code>uj_track_recovered_v3.zip</code></td>
+<td>Clearance-first erosion, skeleton, cycle extraction</td>
+<td>Demonstrated on actual map</td>
+</tr>
+<tr class="even">
+<td><code>uj_feasible_route_fix.zip</code></td>
+<td>Kinematic curvature correction and 5-mm verification</td>
+<td>Geometric validation demonstrated</td>
+</tr>
+<tr class="odd">
+<td><code>uj_saved_map_resume.zip</code></td>
+<td>Restart-aware scan-to-map initialization and AMCL driving</td>
+<td>Partial recovered-map driving to waypoint 56</td>
+</tr>
+</tbody>
+</table>
+<p>Package ZIPs are development-delivery artifacts, not a substitute for
+a clean source repository. The GitHub repository should contain the
+<strong>installed source files, configurations and curated reference
+outputs</strong>, while older incremental ZIPs and failed prototypes can
+live under an archival release or dated development documentation.</p>
+<h1 id="failure-analysis-and-safeguards">10. Failure analysis and
+safeguards</h1>
+<p><strong>Frame mismatch and oracle registration.</strong> A SLAM-frame
+centerline is geometrically displaced from the simulator frame; feeding
+the wrong file to the wrong controller caused collision.
+<strong>Correction:</strong> keep explicit map-frame paths for AMCL and
+simulator-frame paths only for the oracle baseline, with registration
+recorded but not used as a localization substitute.</p>
+<p><strong>RF2O vs SLAM pose instability.</strong> Smooth local odometry
+can drift without a global correction; map localization can produce
+implausible position discontinuities. <strong>Correction:</strong>
+combine physically inspired wheel/IMU EKF with AMCL global updates and
+measure absolute errors. Still unresolved: occasional incorrect global
+hypotheses.</p>
+<p><strong>Initial AMCL pose and stop/restart.</strong> A static
+initialized pose may be valid only at the simulator’s original spawn.
+<code>/initialpose</code> can receive messages from Foxglove, but mere
+presence of a publisher is not evidence of an unwanted reset.
+<strong>Correction:</strong> require clean startup checks and use live
+LiDAR scan matching to seed restarted saved-map navigation.
+<strong>Unresolved:</strong> test robust global localization under more
+distant starting points.</p>
+<p><strong>Skeleton topology.</strong> A perfect one-pixel cycle was too
+strict: observed free-space skeletons contain branches and spurs.
+<strong>Correction:</strong> prune dead ends and seek closed candidates.
+This alone did not solve the true clearance failure.</p>
+<p><strong>Path clipping and unknown wedge.</strong> V2 gave 0.05 m
+clearance despite smoothing changes; the observed upper-track map had an
+unknown wedge and small occupied patch. <strong>Correction:</strong> V3
+forms the clearance-constrained planning region first, then finds a
+cycle. It never erases unknown cells. Result: 0.30 m sampled grid
+clearance.</p>
+<p><strong>Steering infeasibility.</strong> The initial V3 route could
+demand &gt;40 degrees instantaneous steering, even though grid clearance
+passed. <strong>Correction:</strong> local 4.1-cm path adjustment and
+dense curvature verification reduced demanded steering to 21.43 degrees
+under configured geometric assumptions.</p>
+<p><strong>Current resumed-lap failure.</strong> The system stopped at
+CTE 0.170 m, threshold 0.12 m, while the front range was around 0.56 m.
+Then AMCL pose timestamps became stale. <strong>Safe status:</strong>
+STOPPED; do not simply disable guards. Next action is to analyze
+<em>where and when</em> the CTE grew and how AMCL behaved just before
+the stop, and to check simulator-truth CTE in offline evaluation. A good
+route and a healthy pose estimate are both required.</p>
+<p><strong>ROS shutdown exceptions.</strong> Several Python diagnostic
+nodes displayed <code>Failed to publish log message to rosout</code> or
+an rclpy publisher-context error during shutdown. Those occurred after
+CSV summaries were saved and are not evidence of vehicle-control
+failure. Long-term code quality should make shutdown idempotent and
+avoid publishing after <code>rclpy.shutdown()</code>.</p>
+<h1 id="what-can-be-tested-with-the-simulator">11. What can be tested
+with the simulator?</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test category</th>
+<th>Candidate experiments and measurements</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Perception</td>
+<td>LiDAR dropout, field of view, angle resolution, finite vs infinite
+returns, noise, extrinsic bias</td>
+</tr>
+<tr class="even">
+<td>Exploration</td>
+<td>Completion ratio, path length, collisions, dead-end recovery,
+unknown-sector coverage, simulated speed</td>
+</tr>
+<tr class="odd">
+<td>SLAM</td>
+<td>Map completeness, loop-closure drift, repeated-map overlap,
+occupied/unknown classification, map quality</td>
+</tr>
+<tr class="even">
+<td>Planning</td>
+<td>Erosion margin sweep, number of cycle candidates, free-space
+continuity, corner smoothing, curvature feasibility</td>
+</tr>
+<tr class="odd">
+<td>Sensor fusion</td>
+<td>Velocity scale bias, gyro bias, wheel slip model, noise seeds,
+odometry drift and covariance realism</td>
+</tr>
+<tr class="even">
+<td>Localization</td>
+<td>AMCL particle counts, initial-pose tolerance, multi-modal failures,
+wrong-hypothesis recovery, update frequency</td>
+</tr>
+<tr class="odd">
+<td>Control</td>
+<td>Pure Pursuit lookahead and speed, lateral/heading error, steering
+saturation, path completion, oscillations</td>
+</tr>
+<tr class="even">
+<td>Safety</td>
+<td>Stale scan, stale AMCL, lost odometry, out-of-bounds CTE, collision
+latch, duplicate <code>/drive</code> publisher</td>
+</tr>
+<tr class="odd">
+<td>Reliability</td>
+<td>Long-run memory/cpu use, repeatability under multiple seeds, ROS
+restart behavior, TF ownership</td>
+</tr>
+<tr class="even">
+<td>Sim-to-real</td>
+<td>Hardware actuator dynamics, braking distance, parameter
+identification, extrinsic sensitivity</td>
+</tr>
+</tbody>
+</table>
+<p>For each experiment record: exact code commit, map SHA, YAML config,
+noise seed, start pose, duration, speed cap, lookahead, frame names,
+controller owner, collision count, trajectory and ground-truth
+evaluation metrics. Run each condition over multiple seeds before making
+statistical claims. A monitor’s estimated CTE alone is insufficient for
+safety evaluation; in simulation use separately logged oracle CTE and
+clearance for offline assessment.</p>
+<h1 id="transition-plan-simulator-to-the-physical-race-car">12.
+Transition plan: simulator to the physical race car</h1>
+<h2 id="phase-0-bench-safety-and-electrical-system">Phase 0: bench
+safety and electrical system</h2>
+<p>Document the actual assembled bill of materials, power rails,
+connectors and current ratings. Verify the Jetson supply, VESC
+power/wiring, motor phase wires and hall/encoder interface if present,
+battery fuse, independently powered steering-servo rail, command
+electrical levels, emergency-stop authority and thermal behavior. Keep
+propulsion wheels lifted during initial electrical checks. Use a
+physical kill switch and motor-controller watchdog, not just Python
+speed commands. Never connect an untested simulation <code>/drive</code>
+publisher directly to a motor driver.</p>
+<h2 id="phase-1-hardware-drivers-without-autonomy">Phase 1: hardware
+drivers, without autonomy</h2>
+<p>Bring up Jetson ROS 2 Humble; acquire LakiBeam L1 scans into a stable
+<code>LaserScan</code> topic; verify scan timestamps/rates/ranges and
+the <em>physical</em> laser extrinsics; connect VESC using its supported
+interface (USB/UART candidate), check ERPM, current and fault telemetry;
+generate a limited drive command in a dedicated actuator bridge; command
+steering through a rated PWM interface and servo power. Confirm
+steering-center, endpoint angles, Ackermann sign conventions, propulsion
+direction, measured wheel speed and emergency stop. Record everything in
+a hardware test log.</p>
+<h2 id="phase-2-physical-local-odometry">Phase 2: physical local
+odometry</h2>
+<p>Calibrate motor pole-pair count, transmission ratio and wheel
+effective radius and transform VESC ERPM into road speed. Calibrate IMU
+axes, sign, gyro bias and noise while stationary and while turning. Run
+<code>robot_localization</code> EKF with <strong>actual
+sensors</strong>, not the simulation emulator. Compare to independent
+measurements over known distances/turns; estimate covariance
+realistically and validate TF (<code>odom -&gt; base_link</code>). Keep
+speeds very low and the area clear.</p>
+<h2 id="phase-3-physical-mapping-and-global-localization">Phase 3:
+physical mapping and global localization</h2>
+<p>Use the same LiDAR and EKF interfaces for SLAM Toolbox mapping. First
+map a controlled small loop with remote/supervised motion, check loop
+closure, save <code>.yaml</code>/<code>.pgm</code> plus serialized graph
+where useful, and validate clearances using the <em>real car footprint
+and uncertainty budget</em>. After SLAM stops, switch global TF
+ownership to AMCL on the saved map. Test reinitialization, ambiguous
+corridor segments and loss-of-localization handling before any
+autonomous lap.</p>
+<h2 id="phase-4-guarded-physical-autonomous-operation">Phase 4: guarded
+physical autonomous operation</h2>
+<p>Transfer only verified route, controller and watchdog functionality;
+substitute real actuator adapter and sensors; use a human supervisor and
+hardware emergency stop. Begin at walking speed on a broad clear
+corridor with a robust stop margin. Add front-obstacle checks based on
+the real measured footprint and stopping distance. Only then attempt a
+complete low-speed lap. Tune lookahead, feedback and speed based on
+measured physical dynamics, not solely the simulator’s vehicle
+model.</p>
+<h2 id="phase-5-racing-research-and-optimization">Phase 5: racing
+research and optimization</h2>
+<p>Once reliable low-speed laps are repeatable, compare Pure Pursuit,
+regulated/adaptive Pure Pursuit, Stanley or MPC on matched course
+conditions. Add curvature-aware acceleration/braking, friction- and
+slip-aware velocity planning, robust state estimation under motion,
+dynamic-obstacle safety and trajectory optimization. Use multiple trials
+and synchronized ground-truth or surveyed reference data; only then
+state research contributions or high-speed performance claims.</p>
+<h1 id="next-session-action-plan-and-acceptance-gates">13. Next-session
+action plan and acceptance gates</h1>
+<p><strong>Priority A - fix the recovered-map stop, not the map
+itself.</strong> Preserve <code>resume_*/estimated_drive.csv</code>,
+<code>amcl.log</code>, <code>ekf.log</code>,
+<code>scan_relay.log</code>, and simulator truth odometry if separately
+recorded. Locate index 45-60 and inspect the trend of map-frame
+position, pose covariance, AMCL timestamps, front clearance and
+commanded steering. In the next run, evaluate true distance to the map
+boundaries and true CTE <em>offline</em>. Determine whether the CTE jump
+preceded loss of AMCL publication or vice versa. Avoid increasing
+<code>max_path_cte_m</code> beyond the verified geometric safety margin.
+Acceptance: no localization or stop faults and no collisions on repeated
+full low-speed saved-map laps.</p>
+<p><strong>Priority B - complete automatic handoff from a newly explored
+lap.</strong> After saved-map resume is repeatable, integrate the V3
+clearance-first extractor and steering correction into the main mission
+runner, with a consistent map-frame initialization and no competing TF
+owners. Acceptance: initial unobserved map, explorer completes loop, map
+and valid route saved, AMCL starts against <em>that</em> map, operator
+gate passes, and estimated-pose controller completes a lap without
+oracle state input.</p>
+<p><strong>Priority C - reproducibility and artifacts.</strong> Push the
+verified source and config changes, the paired map
+<code>.yaml/.pgm</code>, the feasible route CSV, route audit, a
+representative results CSV, logs for failures, PDF and Markdown
+documentation. Keep a Git commit ID and test record for each
+demonstration. Acceptance: a clean checkout with documented dependencies
+reproduces the simulator environment and run procedures.</p>
+<p><strong>Priority D - real vehicle commissioning.</strong> Finish
+BOM/wiring, physical emergency stop, VESC and servo interface, LiDAR and
+IMU transforms, and measured odometry. Acceptance: remote-controlled,
+supervised low-speed movement with independent stop tested before
+autonomous mapping.</p>
+<h1 id="risks-open-research-questions-and-honest-limitations">14. Risks,
+open research questions and honest limitations</h1>
+<ol type="1">
+<li><strong>Global localization false hypotheses.</strong> AMCL has
+shown ~0.22 m typical position error and at least one gross failure;
+occasional loop symmetry and ambiguous geometry could produce wrong
+positions. Fail-safe jump/covariance checks cannot guarantee
+detection.</li>
+<li><strong>Clearance margin accounting.</strong> The planner’s 0.30 m
+is map grid-center clearance, not a body swept-volume guarantee.
+Subtract half vehicle width, mapping uncertainty, control tracking
+error, and localization error before authorizing physical motion.</li>
+<li><strong>Scan extrinsic assumption.</strong> +0.275 m was used
+consistently, but the simulator’s actual scan origin needs direct
+transform verification; <code>laser_model</code> URDF geometry alone
+does not resolve this.</li>
+<li><strong>Autonomous exploration generality.</strong> The simple LiDAR
+gap explorer works on the test loop, not arbitrary intersections,
+dynamic obstacles or globally unexplored rooms. It may preferentially
+choose a corridor without systematically covering every sector.</li>
+<li><strong>Proof of loop closure.</strong> An odometric return
+threshold and a visually closed occupancy map are not proof of SLAM
+optimizer loop closure; record closure edges or graph diagnostics for a
+stronger research claim.</li>
+<li><strong>Velocity profile use.</strong> The route generator produces
+a profile, but the latest AMCL controller used 0.15 m/s fixed speed.
+Curvature-based speed control and realistic braking were not validated
+in that test.</li>
+<li><strong>Physical deployment.</strong> No claim of a running
+Jetson-controlled car, commissioned servo actuator or real sensor-based
+automatic racing is made. Hardware-level E-stop and bench tests are not
+yet documented as completed.</li>
+<li><strong>Source of truth for repo.</strong> GitHub <code>main</code>
+as observed on 28 October does not contain the last day’s local changes;
+never imply that an assistant can infer unstaged laptop files from
+GitHub alone.</li>
+</ol>
+<h1
+id="repository-preservation-version-control-and-review-procedure">15.
+Repository preservation, version control and review procedure</h1>
+<p>Use a single repository commit after the working tree is inspected.
+Source should live under <code>scripts/</code>, <code>tools/</code>,
+<code>config/</code>, <code>src/</code> and <code>docs/</code>; the new
+generated map, verified route and compact representative logs live under
+the specific <code>results/missions/</code> run directory. Keep the
+historical <code>.posegraph</code> and <code>.data</code> together if
+retained, and check GitHub’s file limits. Do not commit
+<code>.venv/</code>, <code>build/</code>, <code>install/</code>,
+<code>log/</code>, Python caches, secrets, access tokens or bulky
+disposable model-generated scratch files. Include the PDF and its
+editable Markdown source in <code>docs/</code>.</p>
+<p>Suggested terminal procedure:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/f1tenth_sim</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Save a recoverable local snapshot before staging.</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tar</span> <span class="at">-czf</span> <span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/f1tenth_sim_source_backup_20261028.tar.gz&quot;</span> <span class="dt">\</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exclude</span><span class="op">=</span>.git <span class="at">--exclude</span><span class="op">=</span>.venv <span class="at">--exclude</span><span class="op">=</span>build <span class="at">--exclude</span><span class="op">=</span>install <span class="at">--exclude</span><span class="op">=</span>log <span class="dt">\</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exclude</span><span class="op">=</span><span class="st">&#39;__pycache__&#39;</span> .</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> status <span class="at">--short</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> branch <span class="at">--show-current</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> remote <span class="at">-v</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Stage reviewed source, configs, documentation and selected reproducible outputs.</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add <span class="at">-A</span> <span class="at">--</span> README.md docs scripts tools config reference src </span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add <span class="at">-A</span> <span class="at">--</span> results/missions/20261028_112407</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Only if present and desired: historical maps / curated localization CSVs.</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> add <span class="at">-A</span> <span class="at">--</span> results/mapping results/localization</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Inspect every staged path, size and diff before committing.</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> diff <span class="at">--cached</span> <span class="at">--stat</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> diff <span class="at">--cached</span> <span class="at">--name-status</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> diff <span class="at">--cached</span> <span class="at">--check</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Review for unintentional credentials or large artifacts; remove any with git restore --staged &lt;path&gt;.</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> commit <span class="at">-m</span> <span class="st">&quot;feat: integrate first-lap SLAM, EKF AMCL control and map recovery&quot;</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> push origin main</span></code></pre></div>
+<p><strong>Important:</strong> the commands above must run on the
+development laptop. They cannot be truthfully marked complete from a
+remote GitHub read or from this PDF. If the local branch has diverged
+from remote, reconcile normally using <code>git fetch</code> and inspect
+differences; never blindly force-push. Use <code>git status -sb</code>,
+<code>git log -1 --oneline</code> and
+<code>git ls-remote origin refs/heads/main</code> to verify the final
+push. Large files may need Git LFS or an external release archive; do
+not push unreviewed or proprietary binary dumps.</p>
+<h1 id="appendix-a.-reproducible-logging-and-evidence-matrix">Appendix
+A. Reproducible logging and evidence matrix</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Source</th>
+<th>Primary evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GitHub <code>docs/2026-10-27-development-log.md</code></td>
+<td>Early SLAM, RF2O, oracle laps and frame/registration findings</td>
+</tr>
+<tr class="even">
+<td><code>reference/generated/uj_technical_slam_01_*</code></td>
+<td>Known-map SLAM path, speed and registered oracle path</td>
+</tr>
+<tr class="odd">
+<td><code>results/localization/fusion_amcl_paired.csv</code></td>
+<td>Paired EKF/AMCL vs truth diagnostic metrics (if preserved
+locally)</td>
+</tr>
+<tr class="even">
+<td><code>results/localization/amcl_tf_shadow_compare.csv</code></td>
+<td>655 paired A/B TF vs raw AMCL steering samples</td>
+</tr>
+<tr class="odd">
+<td><code>results/localization/steering_error_decomposition.csv</code></td>
+<td>534 paired position/heading decomposition samples</td>
+</tr>
+<tr class="even">
+<td>Autonomous known-map terminal log</td>
+<td>Complete estimated lap at 0.35 m/s, 344-point path</td>
+</tr>
+<tr class="odd">
+<td><code>results/missions/20261028_112407/lap_watcher.log</code></td>
+<td>EKF loop detection, 34.422 m travel, 229.2 s</td>
+</tr>
+<tr class="even">
+<td><code>results/missions/20261028_112407/new_track.yaml/.pgm</code></td>
+<td>Authentic output of the first integrated SLAM map save</td>
+</tr>
+<tr class="odd">
+<td><code>results/missions/20261028_112407/new_track_preview.png</code></td>
+<td>Clearance-first closed centerline overlay</td>
+</tr>
+<tr class="even">
+<td><code>.../new_track_mission_forward_feasible.csv</code></td>
+<td>Final corrected reference path, 377 points</td>
+</tr>
+<tr class="odd">
+<td><code>.../resume_*/estimated_drive.csv</code> and node logs</td>
+<td>Partial new-map AMCL drive, cross-track stop at 56/377</td>
+</tr>
+</tbody>
+</table>
+<p>Not every file listed above was attached in this conversation; some
+values are derived from terminal logs and/or saved development notes.
+Retain original raw datasets and state their provenance when presenting
+results to supervisors. A route preview and test console are evidence of
+a completed <em>stage</em>, not of all later stages.</p>
+<h1 id="appendix-b.-suggested-supervisor-demonstration">Appendix B.
+Suggested supervisor demonstration</h1>
+<ol type="1">
+<li><strong>Introduce the problem</strong>: autonomous driving on a
+track with no supplied map. State the two independent success metrics:
+map completeness/route validity and estimated-pose driving
+reliability.</li>
+<li><strong>Show the architecture diagram</strong>: separate the
+explorer, SLAM, EKF, AMCL, controller and simulator oracle. Emphasize TF
+ownership.</li>
+<li><strong>Show the historical technical track</strong> and replay a
+reliable oracle baseline; explain that it establishes the driving model,
+not full autonomy.</li>
+<li><strong>Show the saved first-lap map</strong> and its 377-point
+centerline overlay. Explain the failed V1/V2 extraction and V3
+clearance-first correction as an engineering iteration.</li>
+<li><strong>Show the kinematic validation</strong> and the difference
+between free-space and steering-feasible trajectories. State
+21.43-degree peak geometric steering and the limitation of 0.30 m grid
+clearance.</li>
+<li><strong>Show the known-map AMCL closed-loop success</strong> and the
+new-map resumed run’s CTE-triggered stop. A successful stop is a
+safeguard functioning, not a completed lap.</li>
+<li><strong>Show the transition roadmap</strong>: real
+LiDAR/IMU/VESC/servo interfaces, calibration, independent E-stop,
+low-speed supervised test, then optimization and research
+experiments.</li>
+</ol>
+<h1 id="appendix-c.-glossary">Appendix C. Glossary</h1>
+<p><strong>AMCL:</strong> Adaptive Monte Carlo Localization; a
+particle-filter-based map localization algorithm. <strong>CTE:</strong>
+Cross-track error, distance between vehicle pose and a planned
+centerline. <strong>EKF:</strong> Extended Kalman Filter, combining
+wheel-speed-derived motion and IMU angular rate.
+<strong>F1TENTH:</strong> Open autonomous racing platform, typically
+1/10-scale Ackermann cars. <strong>LiDAR:</strong> Light detection and
+ranging, providing range scans. <strong>Map frame:</strong> Globally
+corrected coordinate frame such as <code>slam_map</code>. <strong>Odom
+frame:</strong> Locally continuous but drifting coordinate frame such as
+<code>fusion_odom</code>. <strong>Pose graph:</strong> Optimizable
+nodes/constraints saved by SLAM Toolbox. <strong>Pure Pursuit:</strong>
+Geometric path tracker that steers toward a lookahead target.
+<strong>SLAM:</strong> Simultaneous Localization and Mapping.
+<strong>TF:</strong> ROS frame-transform graph. <strong>VESC:</strong>
+Open-source-inspired electronic speed controller ecosystem, providing
+motor control and telemetry.</p>
+<h1 id="references-and-reproducibility-pointers">References and
+reproducibility pointers</h1>
+<ul>
+<li>UJ F1TENTH simulator repository:
+https://github.com/EngZaq/f1tenth_uj_sim</li>
+<li>Physical platform code repository (separate project):
+https://github.com/EngZaq/f1tenth_uj</li>
+<li>ROS 2 Humble documentation: https://docs.ros.org/en/humble/</li>
+<li>SLAM Toolbox ROS 2 package:
+https://github.com/SteveMacenski/slam_toolbox</li>
+<li>Navigation2 AMCL source/documentation:
+https://navigation.ros.org/</li>
+<li>robot_localization package:
+https://docs.ros.org/en/humble/p/robot_localization/</li>
+<li>F1TENTH project ecosystem: https://f1tenth.org/</li>
+</ul>
+<p><em>Document status: Engineering review edition 1.0, prepared 28
+October 2026 from the GitHub baseline, development-package sources,
+uploaded saved map, verification outputs and terminal logs. Any run or
+hardware feature not expressly marked demonstrated remains a proposed or
+partially tested item.</em></p>
+</body>
+</html>

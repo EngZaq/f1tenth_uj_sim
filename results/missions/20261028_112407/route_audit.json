@@ -1,0 +1,17 @@
+{
+  "description": "Simulation-only geometry validation, not collision proof",
+  "original_waypoints": 377,
+  "new_waypoints": 377,
+  "original_max_steering_from_csv_deg": 40.726,
+  "new_max_steering_at_0_005m_deg": 22.306,
+  "car_max_steering_deg": 24.001,
+  "min_grid_clearance_m": 0.3,
+  "map_unsafe_samples": 0,
+  "new_path_length_m": 37.579,
+  "max_waypoint_change_m": 0.041,
+  "mean_waypoint_change_m": 0.006,
+  "speed_mps": 0.25,
+  "original_map_sha256": "da42b01188ad601938a2d6e7498a1b4249a83f56d8c975a6e446e915cf2aa93a",
+  "original_path_sha256": "8761adb8f7b3a3faa5fbfcee867c2507b22dc5c7b610a893419b192f6226f120",
+  "verified_sampling_m": 0.005
+}

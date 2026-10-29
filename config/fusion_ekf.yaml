@@ -1,0 +1,37 @@
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    sensor_timeout: 0.2
+    two_d_mode: true
+    publish_tf: true
+    publish_acceleration: false
+    print_diagnostics: true
+    map_frame: fusion_map
+    odom_frame: fusion_odom
+    base_link_frame: fusion_base
+    world_frame: fusion_odom
+    transform_time_offset: 0.0
+    transform_timeout: 0.0
+
+    # Fuse wheel-based forward velocity ONLY (no pose, no pseudo yaw).
+    odom0: /sim/vesc/wheel_odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, false,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # Fuse IMU yaw rate ONLY (no invented orientation or acceleration).
+    imu0: /sim/imu/data_raw
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 20
+    imu0_remove_gravitational_acceleration: false

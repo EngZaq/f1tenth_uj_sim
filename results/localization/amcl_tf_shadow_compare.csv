@@ -1,0 +1,1 @@
+ros_time_s,raw_age_s,tf_age_s,raw_x,raw_y,raw_yaw_deg,tf_x,tf_y,tf_yaw_deg,raw_cte_m,tf_cte_m,raw_steering_deg,tf_steering_deg,oracle_steering_deg,abs_raw_oracle_diff_deg,abs_tf_oracle_diff_deg,raw_ok,tf_ok

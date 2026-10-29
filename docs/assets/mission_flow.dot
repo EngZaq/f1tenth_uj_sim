@@ -1,0 +1,16 @@
+digraph M {
+ graph[bgcolor="transparent",rankdir=LR,fontname="DejaVu Sans",splines=ortho,pad=0.3,nodesep=0.5,ranksep=0.85];
+ node [shape=box, style="rounded,filled",color="#233B53",fillcolor="#EAF1F6",fontname="DejaVu Sans",fontsize=11,margin="0.16,0.11"];
+ edge [color="#2E7C85",penwidth=1.7,arrowsize=0.7];
+ a [label="UNKNOWN MAP\nGap exploration + EKF",fillcolor="#FFF3D9"];
+ b [label="SLAM Toolbox\nBuild map in real time"];
+ c [label="Return to start\nSTOP explorer"];
+ d [label="Save YAML / PGM\nCheck observed coverage"];
+ e [label="Clearance-first\nCenterline + speed"];
+ f [label="Curvature and\nsteering validation"];
+ g [label="STOP SLAM\nInitialize AMCL"];
+ h [label="Operator enable\nGuarded Pure Pursuit",fillcolor="#D8F0EA"];
+ fault [label="Validation or sensor fault\nZERO speed + investigate",fillcolor="#F5E1E1"];
+ a->b->c->d->e->f->g->h;
+ e->fault [style=dashed]; f->fault [style=dashed]; g->fault [style=dashed]; h->fault [style=dashed];
+}

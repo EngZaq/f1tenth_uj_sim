@@ -1,0 +1,13 @@
+sim_vesc_imu:
+  ros__parameters:
+    seed: 42
+    # Simulated calibration, NOT necessarily the physical car's wheel diameter.
+    wheel_diameter_m: 0.1016
+    gear_ratio: 4.092
+    motor_pole_pairs: 7.0
+    vesc_hz: 50.0
+    imu_hz: 100.0
+    vesc_speed_scale: 1.005
+    vesc_erpm_noise_std: 35.0
+    gyro_bias_rad_s: 0.001
+    gyro_noise_std_rad_s: 0.01

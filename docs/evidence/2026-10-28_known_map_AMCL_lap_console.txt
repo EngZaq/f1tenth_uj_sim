@@ -1,0 +1,124 @@
+(.venv) ➜  f1tenth_sim git:(main) ✗ cd ~/f1tenth_sim
+zsh scripts/run_autonomous_amcl_sim.zsh
+F1TENTH environment: /home/zaids_laptop/f1tenth_sim (domain=42; RMW=rmw_cyclonedds_cpp)
+Starting virtual_sensors ...
+Starting ekf ...
+Starting scan_relay ...
+Starting amcl ...
+Waiting for /amcl and /fusion_map_server to activate...
+Starting autonomous_drive ...
+
+*******************************************************
+* AUTONOMOUS SIM READY -- vehicle is STOPPED/DISABLED *
+* AMCL + EKF drive /drive, NOT ground-truth odometry.   *
+* Speed cap 0.35 m/s; auto-stop after estimated lap 1. *
+*******************************************************
+Logs: /home/zaids_laptop/f1tenth_sim/results/localization/autonomous_run_20261028_110908
+Press ENTER to ENABLE simulation-only driving; Ctrl+C to quit.
+
+publisher: beginning loop
+publishing #1: std_msgs.msg.Bool(data=True)
+
+
+Following autonomous control log. Ctrl+C to STOP and exit.
+[WARN] [1793174985.328368280] [amcl_autonomous_drive]: ENABLE received. Car moves ONLY when all safety guards pass.
+[WARN] [1793174985.356138619] [amcl_autonomous_drive]: ARMED: closed-loop AMCL/EKF steering engaged (sim only).
+[INFO] [1793174985.605593924] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-11.8deg CTE=0.103m AMCLage=0.48s front=1.58m lap=0 progress=0/344
+[INFO] [1793174986.655879991] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.2deg CTE=0.102m AMCLage=0.13s front=1.72m lap=0 progress=3/344
+[INFO] [1793174987.657188447] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.1deg CTE=0.067m AMCLage=0.23s front=1.82m lap=0 progress=7/344
+[INFO] [1793174988.705572534] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-1.3deg CTE=0.003m AMCLage=0.11s front=1.71m lap=0 progress=10/344
+[INFO] [1793174989.706083959] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-2.4deg CTE=0.044m AMCLage=0.14s front=1.53m lap=0 progress=14/344
+[INFO] [1793174990.756448187] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-3.8deg CTE=0.050m AMCLage=0.03s front=1.40m lap=0 progress=17/344
+[INFO] [1793174991.806070364] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.3deg CTE=0.026m AMCLage=0.11s front=1.32m lap=0 progress=21/344
+[INFO] [1793174992.805977498] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.7deg CTE=0.001m AMCLage=0.18s front=1.24m lap=0 progress=24/344
+[INFO] [1793174993.805752834] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.4deg CTE=0.016m AMCLage=0.18s front=1.24m lap=0 progress=28/344
+[INFO] [1793174994.855672431] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.3deg CTE=0.023m AMCLage=0.06s front=1.21m lap=0 progress=31/344
+[INFO] [1793174995.855778479] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.4deg CTE=0.020m AMCLage=0.29s front=1.18m lap=0 progress=35/344
+[INFO] [1793174996.906192138] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.4deg CTE=0.024m AMCLage=0.18s front=1.18m lap=0 progress=39/344
+[INFO] [1793174997.956357561] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.7deg CTE=0.023m AMCLage=0.23s front=1.18m lap=0 progress=42/344
+[INFO] [1793174999.005567090] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-3.9deg CTE=0.017m AMCLage=0.24s front=1.20m lap=0 progress=46/344
+[INFO] [1793175000.006459734] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-3.7deg CTE=0.011m AMCLage=0.11s front=1.19m lap=0 progress=49/344
+[INFO] [1793175001.056464710] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.3deg CTE=0.006m AMCLage=0.19s front=1.20m lap=0 progress=53/344
+[INFO] [1793175002.105628618] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.8deg CTE=0.013m AMCLage=0.11s front=1.26m lap=0 progress=56/344
+[INFO] [1793175003.105604262] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.7deg CTE=0.016m AMCLage=0.14s front=1.24m lap=0 progress=60/344
+[INFO] [1793175004.105731142] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.9deg CTE=0.014m AMCLage=0.18s front=1.24m lap=0 progress=63/344
+[INFO] [1793175005.156255158] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.9deg CTE=0.022m AMCLage=0.23s front=1.30m lap=0 progress=67/344
+[INFO] [1793175006.205607115] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.6deg CTE=0.024m AMCLage=0.08s front=1.26m lap=0 progress=70/344
+[INFO] [1793175007.205727633] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.0deg CTE=0.011m AMCLage=0.08s front=1.26m lap=0 progress=74/344
+[INFO] [1793175008.205981812] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.3deg CTE=0.010m AMCLage=0.18s front=1.25m lap=0 progress=77/344
+[INFO] [1793175009.205934341] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.8deg CTE=0.015m AMCLage=0.21s front=1.29m lap=0 progress=80/344
+[INFO] [1793175010.205585379] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.5deg CTE=0.012m AMCLage=0.21s front=1.26m lap=0 progress=83/344
+[INFO] [1793175011.255833122] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.5deg CTE=0.007m AMCLage=0.26s front=1.33m lap=0 progress=87/344
+[INFO] [1793175012.256107540] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.8deg CTE=0.014m AMCLage=0.26s front=1.49m lap=0 progress=90/344
+[INFO] [1793175013.256178890] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.3deg CTE=0.012m AMCLage=0.09s front=2.52m lap=0 progress=94/344
+[INFO] [1793175014.306293419] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-3.0deg CTE=0.026m AMCLage=0.18s front=2.10m lap=0 progress=97/344
+[INFO] [1793175015.306032987] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-0.8deg CTE=0.038m AMCLage=0.08s front=1.78m lap=0 progress=100/344
+[INFO] [1793175016.355924668] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+4.1deg CTE=0.042m AMCLage=0.09s front=1.55m lap=0 progress=104/344
+[INFO] [1793175017.356607422] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+6.5deg CTE=0.063m AMCLage=0.19s front=1.39m lap=0 progress=107/344
+[INFO] [1793175018.356012858] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+9.4deg CTE=0.068m AMCLage=0.19s front=1.29m lap=0 progress=111/344
+[INFO] [1793175019.405910052] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+9.4deg CTE=0.056m AMCLage=0.11s front=1.21m lap=0 progress=114/344
+[INFO] [1793175020.406767796] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+9.5deg CTE=0.041m AMCLage=0.18s front=1.18m lap=0 progress=118/344
+[INFO] [1793175021.456150983] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+8.6deg CTE=0.022m AMCLage=0.19s front=1.25m lap=0 progress=122/344
+[INFO] [1793175022.505506056] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+7.1deg CTE=0.008m AMCLage=0.11s front=1.41m lap=0 progress=125/344
+[INFO] [1793175023.505608205] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+5.5deg CTE=0.042m AMCLage=0.18s front=1.88m lap=0 progress=128/344
+[INFO] [1793175024.505819287] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+2.3deg CTE=0.048m AMCLage=0.24s front=1.91m lap=0 progress=132/344
+[INFO] [1793175025.505837886] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+1.0deg CTE=0.047m AMCLage=0.08s front=1.62m lap=0 progress=135/344
+[INFO] [1793175026.555626502] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-1.3deg CTE=0.047m AMCLage=0.16s front=1.38m lap=0 progress=139/344
+[INFO] [1793175027.555881037] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.4deg CTE=0.033m AMCLage=0.13s front=1.24m lap=0 progress=143/344
+[INFO] [1793175028.556739284] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.0deg CTE=0.046m AMCLage=0.19s front=1.14m lap=0 progress=146/344
+[INFO] [1793175029.606543005] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.7deg CTE=0.057m AMCLage=0.08s front=1.06m lap=0 progress=150/344
+[INFO] [1793175030.656617071] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-9.6deg CTE=0.062m AMCLage=0.23s front=0.99m lap=0 progress=153/344
+[INFO] [1793175031.705589751] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-9.4deg CTE=0.036m AMCLage=0.08s front=0.96m lap=0 progress=157/344
+[INFO] [1793175032.755634906] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-9.2deg CTE=0.004m AMCLage=0.23s front=0.95m lap=0 progress=161/344
+[INFO] [1793175033.756038588] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.8deg CTE=0.012m AMCLage=0.23s front=0.97m lap=0 progress=165/344
+[INFO] [1793175034.805705923] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.6deg CTE=0.017m AMCLage=0.18s front=0.99m lap=0 progress=168/344
+[INFO] [1793175035.805716880] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.2deg CTE=0.017m AMCLage=0.18s front=1.05m lap=0 progress=171/344
+[INFO] [1793175036.856321143] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.5deg CTE=0.021m AMCLage=0.29s front=1.05m lap=0 progress=175/344
+[INFO] [1793175037.856053077] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.3deg CTE=0.009m AMCLage=0.06s front=1.15m lap=0 progress=178/344
+[INFO] [1793175038.905622979] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.9deg CTE=0.005m AMCLage=0.21s front=1.23m lap=0 progress=182/344
+[INFO] [1793175039.956571603] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.4deg CTE=0.011m AMCLage=0.03s front=1.27m lap=0 progress=186/344
+[INFO] [1793175041.005631368] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.1deg CTE=0.013m AMCLage=0.11s front=1.27m lap=0 progress=189/344
+[INFO] [1793175042.005633352] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.4deg CTE=0.022m AMCLage=0.14s front=1.25m lap=0 progress=192/344
+[INFO] [1793175043.056196949] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.9deg CTE=0.035m AMCLage=0.23s front=1.31m lap=0 progress=196/344
+[INFO] [1793175044.056888201] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.0deg CTE=0.046m AMCLage=0.06s front=1.29m lap=0 progress=199/344
+[INFO] [1793175045.105481519] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.7deg CTE=0.035m AMCLage=0.11s front=1.35m lap=0 progress=203/344
+[INFO] [1793175046.105515896] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.3deg CTE=0.030m AMCLage=0.11s front=1.35m lap=0 progress=206/344
+[INFO] [1793175047.155852937] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.7deg CTE=0.029m AMCLage=0.16s front=1.39m lap=0 progress=209/344
+[INFO] [1793175048.155993823] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.3deg CTE=0.023m AMCLage=0.29s front=1.44m lap=0 progress=213/344
+[INFO] [1793175049.156458384] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.2deg CTE=0.006m AMCLage=0.09s front=1.49m lap=0 progress=216/344
+[INFO] [1793175050.205508787] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.8deg CTE=0.014m AMCLage=0.14s front=2.06m lap=0 progress=219/344
+[INFO] [1793175051.255767245] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-2.9deg CTE=0.027m AMCLage=0.26s front=2.10m lap=0 progress=223/344
+[INFO] [1793175052.306189775] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-1.1deg CTE=0.051m AMCLage=0.08s front=1.70m lap=0 progress=226/344
+[INFO] [1793175053.356694517] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+2.9deg CTE=0.056m AMCLage=0.23s front=1.51m lap=0 progress=230/344
+[INFO] [1793175054.356564544] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+5.1deg CTE=0.054m AMCLage=0.09s front=1.38m lap=0 progress=233/344
+[INFO] [1793175055.405656378] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+5.8deg CTE=0.048m AMCLage=0.21s front=1.41m lap=0 progress=237/344
+[INFO] [1793175056.456208082] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+4.6deg CTE=0.045m AMCLage=0.09s front=1.56m lap=0 progress=241/344
+[INFO] [1793175057.505556342] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+2.7deg CTE=0.017m AMCLage=0.21s front=2.06m lap=0 progress=244/344
+[INFO] [1793175058.555861600] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+0.4deg CTE=0.008m AMCLage=0.26s front=1.73m lap=0 progress=248/344
+[INFO] [1793175059.555961021] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-0.5deg CTE=0.038m AMCLage=0.09s front=1.57m lap=0 progress=251/344
+[INFO] [1793175060.555717237] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-3.3deg CTE=0.035m AMCLage=0.16s front=1.41m lap=0 progress=255/344
+[INFO] [1793175061.605486558] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.9deg CTE=0.045m AMCLage=0.24s front=1.35m lap=0 progress=258/344
+[INFO] [1793175062.605489036] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.7deg CTE=0.047m AMCLage=0.08s front=1.30m lap=0 progress=262/344
+[INFO] [1793175063.655588937] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.4deg CTE=0.060m AMCLage=0.06s front=1.26m lap=0 progress=266/344
+[INFO] [1793175064.656818515] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-9.2deg CTE=0.049m AMCLage=0.13s front=1.23m lap=0 progress=270/344
+[INFO] [1793175065.705442029] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.7deg CTE=0.049m AMCLage=0.18s front=1.21m lap=0 progress=273/344
+[INFO] [1793175066.705556653] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.7deg CTE=0.026m AMCLage=0.21s front=1.25m lap=0 progress=276/344
+[INFO] [1793175067.705498666] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.7deg CTE=0.013m AMCLage=0.24s front=2.05m lap=0 progress=280/344
+[INFO] [1793175068.756407880] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-2.0deg CTE=0.014m AMCLage=0.16s front=1.66m lap=0 progress=283/344
+[INFO] [1793175069.805796458] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+1.5deg CTE=0.046m AMCLage=0.08s front=1.40m lap=0 progress=287/344
+[INFO] [1793175070.855913441] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+6.0deg CTE=0.047m AMCLage=0.19s front=1.23m lap=0 progress=291/344
+[INFO] [1793175071.856182216] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+6.1deg CTE=0.065m AMCLage=0.23s front=1.17m lap=0 progress=294/344
+[INFO] [1793175072.855883051] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+6.5deg CTE=0.064m AMCLage=0.06s front=1.14m lap=0 progress=297/344
+[INFO] [1793175073.905506590] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+6.5deg CTE=0.029m AMCLage=0.21s front=1.31m lap=0 progress=301/344
+[INFO] [1793175074.955764169] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+2.8deg CTE=0.003m AMCLage=0.06s front=1.92m lap=0 progress=305/344
+[INFO] [1793175076.005490260] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=+0.0deg CTE=0.046m AMCLage=0.18s front=1.60m lap=0 progress=308/344
+[INFO] [1793175077.005851536] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-4.9deg CTE=0.065m AMCLage=0.21s front=1.39m lap=0 progress=312/344
+[INFO] [1793175078.005776759] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.4deg CTE=0.055m AMCLage=0.24s front=1.32m lap=0 progress=315/344
+[INFO] [1793175079.055667380] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.8deg CTE=0.057m AMCLage=0.09s front=1.31m lap=0 progress=319/344
+[INFO] [1793175080.055898609] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-9.2deg CTE=0.036m AMCLage=0.06s front=1.34m lap=0 progress=323/344
+[INFO] [1793175081.105567774] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-8.5deg CTE=0.021m AMCLage=0.08s front=1.38m lap=0 progress=326/344
+[INFO] [1793175082.105816106] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.8deg CTE=0.012m AMCLage=0.18s front=1.40m lap=0 progress=330/344
+[INFO] [1793175083.156090940] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-7.2deg CTE=0.007m AMCLage=0.09s front=1.45m lap=0 progress=334/344
+[INFO] [1793175084.205741820] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-6.6deg CTE=0.007m AMCLage=0.21s front=1.46m lap=0 progress=337/344
+[INFO] [1793175085.255757869] [amcl_autonomous_drive]: DRIVE: OK | speed=0.35 m/s steer=-5.6deg CTE=0.008m AMCLage=0.13s front=1.47m lap=0 progress=341/344
+[WARN] [1793175086.056080528] [amcl_autonomous_drive]: ESTIMATED LAP 1 COMPLETE

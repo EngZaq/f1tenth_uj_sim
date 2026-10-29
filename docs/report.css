@@ -1,0 +1,50 @@
+@page {
+ size: A4;
+ margin: 21mm 18mm 19mm 18mm;
+ @top-left {content: 'UJ F1TENTH  /  SIMULATION ENGINEERING REPORT';font-family:'Lato';font-weight:700;font-size:7.5pt;color:#567087;letter-spacing:.7pt}
+ @top-right {content: '28 OCT 2026';font-family:'Lato';font-size:7.5pt;color:#567087}
+ @bottom-left {content: 'UNIVERSITY OF JORDAN  |  DEVELOPMENT REVIEW';font-family:'Lato';font-size:7.2pt;color:#567087}
+ @bottom-right {content: counter(page) '  /  ' counter(pages);font-family:'Lato';font-weight:700;font-size:8pt;color:#28465B}
+}
+@page:first { margin: 0; @top-left{content:none} @top-right{content:none} @bottom-left{content:none} @bottom-right{content:none} }
+* {box-sizing:border-box}
+body { font-family:'Lato','DejaVu Sans',sans-serif; color:#1B303F; font-size:9.5pt; line-height:1.47; }
+#title-block-header { display:flex;flex-direction:column;justify-content:center; min-height:297mm; padding:40mm 27mm 30mm; background: linear-gradient(135deg,#0B2536 0%,#173E55 62%,#1C6E77 100%);color:white;page-break-after:always; }
+#title-block-header:before {content: 'UNIVERSITY OF JORDAN  /  MECHATRONICS ENGINEERING';font-size:10.2pt;letter-spacing:2.2pt;font-weight:700;color:#9ED9D9;margin-bottom:24mm;display:block;border-left:4px solid #54C3B8;padding-left:12px;}
+#title-block-header h1.title {font-family:'Lato',sans-serif; font-size:36pt;line-height:1.05;font-weight:900;color:white;letter-spacing:-.6pt;margin:0 0 10mm 0;border:0;padding:0;}
+#title-block-header .subtitle {font-size:17pt;line-height:1.36;color:#D0E9EF;font-weight:400;max-width:140mm;margin:0 0 35mm;}
+#title-block-header .author, #title-block-header .date {color:#CDE0E6;font-size:10pt;letter-spacing:.3pt;margin:0 0 3mm;}
+#TOC {page-break-after:always;}
+#TOC>ul {columns:2;column-gap:9mm;font-size:9pt;padding-left:1em;}
+#TOC li {break-inside:avoid;margin:.13em 0;}
+#TOC ul ul {columns:1;font-size:8.5pt;margin-bottom:.25em;}
+#TOC a {text-decoration:none;color:#20566A;}
+#TOC:before {content:'DOCUMENT CONTENTS';display:block;font-size:18pt;color:#184258;font-weight:900;padding:0 0 5mm;border-bottom:2px solid #3D9C98;margin:10mm 0 7mm;}
+h1,h2,h3 {font-family:'Lato', sans-serif; font-weight:800;color:#123B50;line-height:1.18;}
+h1 {font-size:20pt; margin:0 0 6mm; padding:0 0 3mm; border-bottom:2.5px solid #24A3A0;page-break-before:always;}
+h1:first-of-type {page-break-before:avoid;}
+h2 {font-size:12.6pt;margin:7mm 0 2.4mm; break-after:avoid;}
+h3 {font-size:10.8pt;margin:5mm 0 2mm;break-after:avoid;}
+p {margin:0 0 3.6mm;orphans:3;widows:3;}
+strong {font-weight:800;color:#12384D;}
+table {border-collapse:collapse;width:100%;font-size:8.0pt;line-height:1.32;margin:3mm 0 5mm;table-layout:auto;}
+thead {display:table-header-group;}
+th {background:#17485A;color:white;text-align:left;padding:7px 8px;font-weight:700;}
+td {padding:5px 7px;border-bottom:1px solid #CFE0E4;vertical-align:top;overflow-wrap:anywhere;}
+tr:nth-child(even) td {background:#F3F8FA;}
+tr {break-inside:avoid;}
+pre {white-space:pre-wrap;overflow-wrap:anywhere;font-family:'DejaVu Sans Mono';font-size:7.4pt;background:#F0F5F7;border-left:3px solid #2A8E94;padding:8px 10px;line-height:1.42;break-inside:avoid;margin:2.5mm 0 4mm;}
+code {font-family:'DejaVu Sans Mono',monospace;font-size:7.6pt;color:#245B72;}
+pre code {color:#143848;}
+img {max-width:100%;height:auto;display:block;margin:0 auto;}
+figure {margin:4mm auto 5mm;text-align:center;break-inside:avoid;}
+figure img {max-height:165mm;object-fit:contain;}
+figure:has(img[src*='architecture']) img,figure:has(img[src*='mission_flow']) img {max-height:115mm;}
+figure:has(img[src*='steering_sensitivity']) img,figure:has(img[src*='bias_stress']) img {max-height:95mm;}
+figcaption {font-size:8.1pt;color:#547182;font-style:italic;margin-top:2mm;}
+blockquote {border-left:3px solid #4C9D99;background:#F0F8F7;padding:2.5mm 4mm;margin:3mm 0;color:#315669;}
+a {color:#166E82;text-decoration:none;}
+a:hover{text-decoration:underline;}
+hr {border:none;border-top:1px solid #BBD0D6;margin:6mm 0;}
+ul,ol {padding-left:6mm;margin-top:2mm;margin-bottom:3mm;}
+li {margin-bottom:1.1mm;}

@@ -1,0 +1,11 @@
+{
+  "finish_x": -4.29910131121822,
+  "finish_y": -0.6358655973681497,
+  "finish_yaw": 0.7757555587939725,
+  "frame_id": "slam_map",
+  "distance_odom_m": 34.422,
+  "duration_s": 229.2,
+  "return_distance_odom_m": 0.85,
+  "return_yaw_error_deg": 14.0,
+  "source": "latest SLAM TF after mapping settled; no oracle"
+}

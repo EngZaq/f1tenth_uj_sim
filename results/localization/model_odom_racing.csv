@@ -1,0 +1,2 @@
+timestamp,lap,configured_target_speed_mps,mean_commanded_speed_mps,min_commanded_speed_mps,max_commanded_speed_mps,lookahead_m,lap_time_s,mean_cte_m,max_cte_m
+2026-10-27T21:47:28,1,5.000,1.175,0.911,1.200,0.500,29.200,0.0278,0.0914

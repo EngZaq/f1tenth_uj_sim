@@ -1,0 +1,19 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, fontsize=14, fontname="DejaVu Sans", splines=ortho, nodesep=0.42, ranksep=0.8, pad=0.22, labelloc=t];
+  node [shape=box, style="rounded,filled", color="#233B53", fillcolor="#EAF1F6", fontname="DejaVu Sans", fontsize=11, penwidth=1.1, margin="0.18,0.13"];
+  edge [color="#407389", penwidth=1.4, arrowsize=0.65];
+  simulator [label="F1TENTH Gym\nsimulator", fillcolor="#E9F1F7"];
+  lidar [label="LiDAR scan\n/scan"];
+  emulator [label="Virtual VESC + IMU\n(synthesizes sensors)", fillcolor="#FFF2D7"];
+  ekf [label="robot_localization EKF\nfusion_odom → fusion_base", fillcolor="#D7F0EB"];
+  relay [label="Scan relay\n/fusion/scan"];
+  explorer [label="LiDAR explorer\n(unknown track)", fillcolor="#D7F0EB"];
+  slam [label="SLAM Toolbox\n(mapping phase)", fillcolor="#D7F0EB"];
+  saved [label="Saved map + route\nYAML / PGM / CSV", fillcolor="#D7F0EB"];
+  amcl [label="Nav2 AMCL\n(saved-map phase)", fillcolor="#D7F0EB"];
+  controller [label="Guarded Pure Pursuit\nmap-frame TF + CSV", fillcolor="#D7F0EB"];
+  drive [label="/drive\nAckermann command", fillcolor="#F2E5E5"];
+  simulator->lidar; simulator->emulator; emulator->ekf; lidar->relay; lidar->explorer; relay->slam; ekf->slam; slam->saved; saved->amcl; relay->amcl; ekf->amcl; amcl->controller; ekf->controller; saved->controller; controller->drive; explorer->drive; drive->simulator;
+  {rank=same; explorer; slam;}
+  {rank=same; saved; controller;}
+}
