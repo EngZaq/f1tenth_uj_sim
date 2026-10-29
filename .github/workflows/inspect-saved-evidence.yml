@@ -1,0 +1,25 @@
+name: Inspect saved mission evidence
+on:
+  push:
+    branches: ["engineering/mission-evidence-ci-40936432291"]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: python -m pip install "numpy<2" "scipy<2" Pillow PyYAML
+      - uses: actions/download-artifact@v4
+        with:
+          name: full-gym-mission-evidence
+          run-id: 40936432291
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Inspect recorded data and replay stopping buffer
+        run: python .github/scripts/inspect_saved_evidence.py
