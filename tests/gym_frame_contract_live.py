@@ -12,7 +12,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from sim_geometry import LASER, FUSION_LASER, REAR_TO_COG, rear_axle_pose, BODY_FRONT, BODY_REAR
 from f1tenth_gym.envs.dynamic_models import DynamicModel,get_f1tenth_vehicle_parameters
 from f1tenth_gym.envs.dynamic_models.single_track import vehicle_dynamics_st
-from f1tenth_gym.envs.simulator import Simulator
+from f1tenth_gym.envs.simulator import F110Simulator as Simulator
 
 p=get_f1tenth_vehicle_parameters()
 assert abs(p.lr-REAR_TO_COG)<1e-9
