@@ -1,15 +1,137 @@
 #!/usr/bin/env python3
 """Regression: older run without truth CSV must still give usable diagnostics."""
 import subprocess
+import csv
+import importlib.util
+import math
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'tools/localization/summarize_sim_localization_audit.py'
+SPEC = importlib.util.spec_from_file_location('localization_summary', SCRIPT)
+SUMMARY = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(SUMMARY)
+
+
+def sample(t, x=0.0, y=0.0, lag=0.001, error=0.0):
+    return dict(stamp_s=t, truth_x_sim=x, truth_y_sim=y, truth_yaw_deg=0,
+                amcl_x_map=x, amcl_y_map=y, amcl_yaw_deg=0,
+                truth_pair_lag_s=lag, amcl_relative_pos_error_m=error)
 
 
 class SummaryTest(unittest.TestCase):
+    def test_sparse_truth_endpoints_are_reported_without_motion_classification(self):
+        rows = [sample(1., x=2., y=3.), sample(2.7, x=2., y=3.)]
+        result = SUMMARY.sampled_truth_span(rows)
+        self.assertEqual(result['samples'], 2)
+        self.assertAlmostEqual(result['span_s'], 1.7)
+        self.assertEqual(result['max_displacement_m'], 0.)
+        groups, counts, _, _ = SUMMARY.motion_audit(rows)
+        self.assertFalse(groups['MOVING'])
+        self.assertFalse(groups['STATIONARY'])
+        self.assertEqual(counts['gap'], 1)
+
+    def test_covariance_projection_and_invalid_matrix(self):
+        row = dict(amcl_cov_xx=.01, amcl_cov_xy=.006, amcl_cov_yx=.006,
+                   amcl_cov_yy=.04, amcl_yaw_deg=90.)
+        forward, left = SUMMARY.vehicle_covariance_sigma(row)
+        self.assertAlmostEqual(forward, .2)
+        self.assertAlmostEqual(left, .1)
+        self.assertIsNone(SUMMARY.vehicle_covariance_sigma(dict(row, amcl_cov_xy=1., amcl_cov_yx=1.)))
+        self.assertIsNone(SUMMARY.vehicle_covariance_sigma(dict(row, amcl_cov_xy=.007)))
+
+    def test_stationary_samples_cannot_hide_moving_error(self):
+        # A long preparation period must not dominate the moving-only result.
+        rows = [sample(100+i*.1) for i in range(101)]
+        rows += [sample(110+i*.1, x=i*.04, error=.25) for i in range(1, 11)]
+        groups, counts, duration, distance = SUMMARY.motion_audit(rows)
+        self.assertEqual(len(groups['STATIONARY']), 100)
+        self.assertEqual(len(groups['MOVING']), 10)
+        self.assertEqual(SUMMARY.finite_values(groups['MOVING'],
+                                              'amcl_relative_pos_error_m'), [.25]*10)
+        self.assertAlmostEqual(duration['MOVING'], 1.0)
+        self.assertAlmostEqual(distance['MOVING'], .4)
+        self.assertEqual(counts['no_interval'], 1)
+
+    def test_motion_uses_truth_not_command(self):
+        rows = [sample(1), sample(1.1)]
+        rows[-1]['cmd_speed_mps'] = 2.0
+        groups, _, _, _ = SUMMARY.motion_audit(rows)
+        self.assertEqual(len(groups['STATIONARY']), 1)
+        self.assertFalse(groups['MOVING'])
+
+    def test_new_schema_uses_exact_truth_times_and_pair_lag(self):
+        first, second = sample(1.), sample(1.1, x=.04)
+        first['truth_stamp_s'] = .99
+        second['truth_stamp_s'] = 1.08
+        groups, _, duration, _ = SUMMARY.motion_audit([first, second])
+        self.assertAlmostEqual(duration['MOVING'], .09)
+        self.assertAlmostEqual(groups['MOVING'][0]['interval_truth_speed_mps'], .04/.09)
+        # A misleading rounded lag must not override the saved source stamp.
+        second['truth_stamp_s'] = .9
+        groups, counts, _, _ = SUMMARY.motion_audit([first, second])
+        self.assertFalse(groups['MOVING'])
+        self.assertEqual(counts['late_pair'], 1)
+
+    def test_late_and_missing_pairs_break_intervals(self):
+        rows = [sample(1), sample(1.1, x=.04, lag=.18),
+                sample(1.2, x=.08), sample(1.3, x=.12),
+                sample(1.4, x=.16, lag=float('nan')),
+                sample(1.5, x=.20)]
+        groups, counts, _, distance = SUMMARY.motion_audit(rows)
+        self.assertEqual(len(groups['MOVING']), 1)
+        self.assertEqual(counts['late_pair'], 1)
+        self.assertEqual(counts['invalid'], 1)
+        self.assertAlmostEqual(distance['MOVING'], .04)
+
+    def test_gaps_duplicates_and_clock_resets_do_not_create_motion(self):
+        rows = [sample(1), sample(3, x=1), sample(3, x=2),
+                sample(.1, x=5), sample(.2, x=6)]
+        groups, counts, _, _ = SUMMARY.motion_audit(rows)
+        self.assertFalse(groups['MOVING'])
+        self.assertEqual(counts['gap'], 1)
+        self.assertEqual(counts['nonmonotonic'], 2)
+
+    def test_signed_components_respect_rotated_frame_and_heading(self):
+        first = sample(1, x=1, y=2)
+        first.update(truth_yaw_deg=30, amcl_x_map=8, amcl_y_map=-2,
+                     amcl_yaw_deg=120)
+        second = sample(1.1, x=1.04, y=2)
+        h = math.radians(120)
+        second.update(truth_yaw_deg=30, amcl_yaw_deg=120,
+                      amcl_x_map=8+.12*math.cos(h)-.03*math.sin(h),
+                      amcl_y_map=-1.96+.12*math.sin(h)+.03*math.cos(h))
+        groups, _, _, _ = SUMMARY.motion_audit([first, second])
+        result = groups['MOVING'][0]
+        self.assertAlmostEqual(result['amcl_relative_vehicle_forward_error_m'], .12)
+        self.assertAlmostEqual(result['amcl_relative_vehicle_left_error_m'], .03)
+
+    def test_stationary_only_cli_rejects_driving_conclusion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'truth.csv'
+            rows = [sample(1), sample(1.1)]
+            with path.open('w', newline='') as fp:
+                writer = csv.DictWriter(fp, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
+            result = subprocess.run([sys.executable, str(SCRIPT), str(path)],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('NO ACCEPTED MOVING EVIDENCE', result.stdout)
+            self.assertIn('not absolute map registration', result.stdout)
+            self.assertIn('no covariance-consistency', result.stdout)
+
+    def test_invalid_analysis_limits_have_clear_cli_error(self):
+        for value in ('nan', 'inf', '-1', '0'):
+            result = subprocess.run([sys.executable, str(SCRIPT),
+                                     '--max-pair-lag-s', value],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('must be finite and positive', result.stderr)
+            self.assertNotIn('Traceback', result.stderr)
+
     def test_legacy_csv_missing_truth_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
@@ -35,6 +157,21 @@ class SummaryTest(unittest.TestCase):
             self.assertNotEqual(result.returncode,0)
             self.assertIn('No readable CSV found',result.stderr)
             self.assertNotIn('Traceback',result.stderr)
+
+    def test_original_archived_controller_schema(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'drive.csv'
+            path.write_text(
+                'wall_time_s,state,reason,waypoint_index,commanded_speed_mps,estimated_cte_m\n'
+                '100,DRIVE,OK,56,0.15,0.17\n')
+            result = subprocess.run([sys.executable, str(SCRIPT),
+                                     '--controller-csv', str(path)],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('Maximum waypoint index (not lap progress): 56', result.stdout)
+            self.assertIn('estimated_cte_m', result.stdout)
+            self.assertIn('commanded_speed_mps', result.stdout)
+            self.assertIn('NO TRUTH AUDIT IN THIS RUN', result.stdout)
 
 
 if __name__ == '__main__':

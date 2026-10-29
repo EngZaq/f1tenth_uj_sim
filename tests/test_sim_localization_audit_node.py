@@ -104,6 +104,11 @@ class AuditNodeConstructionTest(unittest.TestCase):
             self.assertEqual(len(lines), 2)
             self.assertAlmostEqual(float(lines[0]['amcl_relative_pos_error_m']), 0., places=5)
             self.assertAlmostEqual(float(lines[1]['amcl_relative_pos_error_m']), .1, places=4)
+            self.assertAlmostEqual(float(lines[1]['truth_stamp_s']), 101.)
+            self.assertAlmostEqual(float(lines[1]['ekf_x_odom']), .5)
+            self.assertAlmostEqual(float(lines[1]['aligned_truth_x_map']), 6.5)
+            self.assertAlmostEqual(float(lines[1]['amcl_cov_xx']), .0025)
+            self.assertAlmostEqual(float(lines[1]['amcl_cov_yaw_yaw']), .001)
             self.assertTrue(node.output_fp.closed)
 
 

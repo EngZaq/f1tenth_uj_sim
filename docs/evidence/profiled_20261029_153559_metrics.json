@@ -1,0 +1,25 @@
+{
+  "run": "profiled_20261029_153559",
+  "source_commit": "4f8f77491731c827972576f74331c65728a870aa",
+  "source_sha256": {
+    "localization_truth_audit(3).csv": "c32dfb128bf2e739741ccf08e73cb3f52eb59fe8a0d37b3ca6865adcafc169a4",
+    "amcl_initial_pose.json": "c3e8e78191a7ac5ea5eaab3757a609a86a98338c4e0ed55cdd47e00e433be073",
+    "recovered_map_amcl(3).yaml": "db5817d70392ebd63a6008c6bf15184c84c3d2eb6500f3cd347c32ba94e57c2b",
+    "amcl(3).log": "1a9025b2c89c23ff286744f40e41defffddeff7e2c3ab28eb14c67e56a4993ac"
+  },
+  "paired_observations": 28,
+  "span_s": 45.635876178741455,
+  "truth_position_span_x_m": 0.0,
+  "truth_position_span_y_m": 0.0,
+  "amcl_max_relative_shift_m": 0.07764,
+  "amcl_final_relative_shift_m": 0.07764,
+  "amcl_final_mean_shift_initial_heading_forward_m": 0.07693592086566076,
+  "amcl_final_mean_shift_initial_heading_left_m": -0.0103892483151024,
+  "amcl_final_relative_yaw_shift_deg": -1.6030000000000015,
+  "ekf_max_relative_position_shift_m": 0.0131,
+  "ekf_max_relative_yaw_shift_deg": 0.874,
+  "last_vehicle_forward_sigma_m": 0.11536360221747805,
+  "last_vehicle_left_sigma_m": 0.02934903298675264,
+  "new_motion_claim": false,
+  "limit": "Stationary estimator movement can be refinement or bias; initial map alignment is not independently validated. Sparse endpoints do not prove continuous stationarity."
+}

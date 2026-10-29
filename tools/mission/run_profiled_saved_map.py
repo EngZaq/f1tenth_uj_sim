@@ -6,6 +6,7 @@ truth for controller commands or startup map scan matching. Operator must arm.
 Experimental profiled controller; leave original saved-map launcher untouched.
 """
 from __future__ import annotations
+import argparse
 import json
 import math
 import os
@@ -69,6 +70,9 @@ def zero_drive():
 
 
 def closeall():
+    # Argument errors/help or an aborted preflight own no ROS processes.
+    if not PROCS:
+        return
     try:call(['ros2','topic','pub','--once','/amcl_drive/enable','std_msgs/msg/Bool','{data: false}'],timeout=4,check=False)
     except Exception:pass
     for name in list(PROCS)[::-1]:stop(name)
@@ -102,10 +106,24 @@ def wrap(a):return math.atan2(math.sin(a),math.cos(a))
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--localization-only',action='store_true',
+                        help='Record stationary localization; never start or arm a controller')
+    parser.add_argument('--observe-seconds',type=float,default=45.0)
+    parser.add_argument('--seed-position-std-m',type=float,default=0.10)
+    parser.add_argument('--seed-yaw-std-deg',type=float,default=5.0)
+    args=parser.parse_args()
+    for key in ('observe_seconds','seed_position_std_m','seed_yaw_std_deg'):
+        value=getattr(args,key)
+        if not math.isfinite(value) or value<=0:
+            parser.error(f'{key} must be finite and positive')
     required=[MAP,RECOVERED/'new_track.pgm',LAP,PATH,
               ROOT/'tools/fusion/sim_vesc_imu.py',ROOT/'tools/localization/fusion_scan_relay.py',
               ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',ROOT/'tools/localization/sim_localization_audit.py',MISSION/'mission_amcl.launch.py',
-              MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml']
+              MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml',
+              ROOT/'tools/localization/initialize_amcl_pose.py']
+    if args.localization_only:
+        required.append(ROOT/'tools/localization/stationary_localization_probe.py')
     for f in required:
         if not f.exists():raise RuntimeError(f'Missing {f}')
     sim=call(['ros2','topic','info','/ego_racecar/odom'],check=False)
@@ -146,7 +164,9 @@ def main():
         'use_sim_time':False,'yaml_filename':str(MAP)})
     cfg['amcl']['ros__parameters'].update({
         'initial_pose':{'x':pose['x'],'y':pose['y'],'z':0.0,'yaw':pose['yaw']},
-        'set_initial_pose':True,'use_sim_time':False,'global_frame_id':'slam_map',
+        # Humble's parameter-only initialization leaves covariance zero.
+        # Supply a separate PoseWithCovarianceStamped after activation instead.
+        'set_initial_pose':False,'use_sim_time':False,'global_frame_id':'slam_map',
         'odom_frame_id':'fusion_odom','base_frame_id':'fusion_base',
         'scan_topic':'/fusion/scan','map_topic':'/fusion/localization_map'})
     cfg['amcl']['ros__parameters']['update_min_d']=0.02
@@ -154,6 +174,11 @@ def main():
     params=RUN/'recovered_map_amcl.yaml';params.write_text(yaml.safe_dump(cfg,sort_keys=False))
     start('amcl',['ros2','launch',MISSION/'mission_amcl.launch.py',f'params:={params}',f'map_yaml:={MAP}'])
     wait_active()
+    initialized=call(['python3','-u',ROOT/'tools/localization/initialize_amcl_pose.py',
+                      '--seed-json',seed_path,'--output',RUN/'amcl_initial_pose.json',
+                      '--position-std-m',args.seed_position_std_m,
+                      '--yaw-std-deg',args.seed_yaw_std_deg],timeout=25)
+    print(initialized.stdout.strip(),flush=True)
     # Passive simulator-only localization audit: truth is never fed back to
     # controller, TF, map seeding, or estimator.
     start('localization_audit',['python3','-u',
@@ -167,6 +192,25 @@ def main():
           f' | scan seed delta={error:.3f}m/{math.degrees(yawerr):.1f}deg',flush=True)
     if error>0.4 or yawerr>math.radians(25):
         raise RuntimeError('AMCL disagrees with scan-matched startup: refuses to arm')
+    if args.localization_only:
+        print(f'LOCALIZATION ONLY: observing for {args.observe_seconds:.1f}s. '
+              'No autonomous controller is started; no arm request is sent.',flush=True)
+        start('stationary_probe',['python3','-u',
+              ROOT/'tools/localization/stationary_localization_probe.py',
+              '--duration',args.observe_seconds,'--refresh-period',0.30,
+              '--output',RUN/'stationary_probe.json'])
+        deadline=time.monotonic()+args.observe_seconds+15.0
+        while PROCS['stationary_probe'].poll() is None:
+            if time.monotonic()>deadline:
+                raise RuntimeError('Stationary probe exceeded its observation deadline')
+            for name in ('amcl','ekf','scan_relay','sensor_emulator','localization_audit'):
+                if PROCS[name].poll() is not None:
+                    raise RuntimeError(f'{name} exited during stationary observation')
+            time.sleep(.1)
+        if PROCS['stationary_probe'].returncode:
+            raise RuntimeError('Stationary probe failed; see stationary_probe.log')
+        print('STATIONARY OBSERVATION COMPLETE; review truth audit before driving.',flush=True)
+        return
     start('autonomous_drive',['python3','-u',ROOT/'tools/navigation/profiled_amcl_drive.py',
         '--ros-args','-p',f'waypoints_file:={PATH}',
         '-p',f'results_file:={RUN/"estimated_drive.csv"}',

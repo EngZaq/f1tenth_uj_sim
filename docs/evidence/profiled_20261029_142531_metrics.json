@@ -1,0 +1,41 @@
+{
+  "run": "profiled_20261029_142531",
+  "source_sha256": {
+    "localization_truth_audit(2).csv": "024e502509751add8b7efd5051cd94c4f253693a4eabdd2bfcae95c0dc7eef4f",
+    "estimated_drive(2).csv": "161be1015ec90bf8a3eadbe79f56cd47be851871e309e4949fad555321243815",
+    "recovered_map_amcl(2).yaml": "f976065d8cd84c62776c63a36be07ad7d39769bf3d341273fb36f10d91bb1cf1",
+    "live_scan_seed(1).json": "4d6030bc5cbf4d296b045d3b78a5760a4bb6a672e0d0d12250b7f628a79e456a"
+  },
+  "truth_rows": 255,
+  "controller_rows": 1191,
+  "drive_command_duration_s": 11.0,
+  "drive_command_start_elapsed_s": 44.944759130477905,
+  "pause_elapsed_s": 55.944759130477905,
+  "hold_elapsed_s": 59.99475908279419,
+  "moving_intervals": 91,
+  "accepted_moving_time_s": 10.80084490776062,
+  "accepted_moving_distance_m": 4.142416945830843,
+  "motion_filter_counts": {
+    "invalid": 0,
+    "late_pair": 0,
+    "nonmonotonic": 0,
+    "gap": 1,
+    "no_interval": 1
+  },
+  "moving_amcl_rmse_m": 0.08697278972613937,
+  "moving_amcl_max_m": 0.13893,
+  "moving_amcl_vehicle_left_rmse_m": 0.07518386918994577,
+  "maximum_drive_estimated_cte_m": 0.0222,
+  "pre_drive_amcl_relative_error_m": 0.05866,
+  "pre_drive_position_sigma_m": 0.00146,
+  "nearest_pause_audit_offset_s": -0.044808149337768555,
+  "nearest_pause_relative_error_m": 0.1361,
+  "nearest_pause_vehicle_left_error_m": 0.11622531929667693,
+  "nearest_pause_ekf_relative_error_m": 0.114,
+  "max_truth_pair_lag_s": 0.002,
+  "first_stop_reason": "LOCALIZATION PAUSE: AMCL confidence temporarily low",
+  "final_hold_reason": "SAFETY HOLD: AMCL did not relocalize in 4.0s: pos_std=0.078m yaw_std=3.1deg",
+  "max_progress": 41,
+  "completed_laps": 0,
+  "interpretation_limit": "First-pose-aligned drift only. No independently verified absolute map registration or collision clearance."
+}
