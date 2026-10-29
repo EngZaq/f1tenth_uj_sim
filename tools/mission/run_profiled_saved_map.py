@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Resume previously mapped track, map-matched startup -> AMCL -> guarded driving.
+
+Simulation ONLY. Does not invoke exploration or SLAM Toolbox. Uses no simulator
+truth for controller commands or startup map scan matching. Operator must arm.
+Experimental profiled controller; leave original saved-map launcher untouched.
+"""
+from __future__ import annotations
+import json
+import math
+import os
+import signal
+import subprocess
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+import yaml
+
+ROOT=Path(__file__).resolve().parents[2]
+MISSION=ROOT/'tools/mission'
+RECOVERED=ROOT/'results/missions/20261028_112407'
+MAP=RECOVERED/'new_track.yaml'
+LAP=RECOVERED/'lap_pose.json'
+PATH=Path.home()/'f1tenth_sim/results/missions/20261028_112407/new_track_body_optimized.csv'
+RUN=ROOT/'results/missions'/('profiled_'+datetime.now().strftime('%Y%m%d_%H%M%S'))
+PROCS={}
+HANDLES={}
+
+
+def call(args,timeout=12,check=True):
+    r=subprocess.run([str(x) for x in args],capture_output=True,text=True,timeout=timeout)
+    if check and r.returncode:
+        raise RuntimeError('Command failed: '+repr(args)+'\n'+(r.stdout+r.stderr)[-2000:])
+    return r
+
+
+def start(name,args):
+    log=(RUN/(name+'.log')).open('w')
+    print('Starting',name,flush=True)
+    p=subprocess.Popen([str(x) for x in args],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+    PROCS[name]=p;HANDLES[name]=log
+    time.sleep(.8)
+    if p.poll() is not None:raise RuntimeError(f'{name} failed, see {RUN/(name+".log")}')
+
+
+def stop(name):
+    p=PROCS.pop(name,None)
+    if not p:return
+    if p.poll() is None:
+        try:os.killpg(p.pid,signal.SIGINT)
+        except ProcessLookupError:pass
+        try:p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:os.killpg(p.pid,signal.SIGTERM)
+            except ProcessLookupError:pass
+            try:p.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                try:os.killpg(p.pid,signal.SIGKILL)
+                except ProcessLookupError:pass
+    h=HANDLES.pop(name,None)
+    if h:h.close()
+
+
+def zero_drive():
+    try:call(['ros2','topic','pub','--once','/drive','ackermann_msgs/msg/AckermannDriveStamped',
+              '{drive: {speed: 0.0, steering_angle: 0.0}}'],timeout=5,check=False)
+    except Exception:pass
+
+
+def closeall():
+    try:call(['ros2','topic','pub','--once','/amcl_drive/enable','std_msgs/msg/Bool','{data: false}'],timeout=4,check=False)
+    except Exception:pass
+    for name in list(PROCS)[::-1]:stop(name)
+    zero_drive()
+    print('Logs:',RUN,flush=True)
+
+
+def wait_active():
+    deadline=time.monotonic()+60
+    while time.monotonic()<deadline:
+        if PROCS['amcl'].poll() is not None:raise RuntimeError('AMCL crashed; see amcl.log')
+        a=call(['ros2','lifecycle','get','/amcl'],timeout=5,check=False)
+        b=call(['ros2','lifecycle','get','/fusion_map_server'],timeout=5,check=False)
+        if 'active [3]' in a.stdout and 'active [3]' in b.stdout:return
+        time.sleep(.5)
+    raise RuntimeError('AMCL/map server did not activate; see amcl.log')
+
+
+def read_amcl_pose():
+    # Stationary AMCL may require a no-motion update after activation.
+    for _ in range(5):
+        call(['ros2','service','call','/request_nomotion_update','std_srvs/srv/Empty','{}'],timeout=8,check=False)
+        try:
+            r=call(['ros2','topic','echo','--once','/amcl_pose','--field','pose.pose'],timeout=8,check=False)
+            if not r.returncode: return yaml.safe_load(r.stdout.split('\n---')[0])
+        except subprocess.TimeoutExpired:pass
+    raise RuntimeError('No AMCL pose received while stationary; see amcl.log')
+
+
+def wrap(a):return math.atan2(math.sin(a),math.cos(a))
+
+
+def main():
+    required=[MAP,RECOVERED/'new_track.pgm',LAP,PATH,
+              ROOT/'tools/fusion/sim_vesc_imu.py',ROOT/'tools/localization/fusion_scan_relay.py',
+              ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',MISSION/'mission_amcl.launch.py',
+              MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml']
+    for f in required:
+        if not f.exists():raise RuntimeError(f'Missing {f}')
+    sim=call(['ros2','topic','info','/ego_racecar/odom'],check=False)
+    if sim.returncode or 'Publisher count: 1' not in sim.stdout:
+        raise RuntimeError('Simulator is not running. Start zsh scripts/run_sim.zsh in Terminal 1')
+    drive=call(['ros2','topic','info','/drive'],check=False)
+    if 'Publisher count: 0' not in drive.stdout:
+        raise RuntimeError(f'Other drive publisher exists. Stop prior autonomous controllers!\n{drive.stdout}')
+    for node in ('/amcl','/slam_toolbox'):
+        nodes=call(['ros2','node','list'],check=False).stdout
+        if node in nodes.splitlines(): raise RuntimeError(f'{node} already running; stop previous stack first')
+    RUN.mkdir(parents=True,exist_ok=True)
+    print('\n===== PROFILED SAVED-MAP LAP (SIMULATION ONLY / ENGINEERING BRANCH) =====',flush=True)
+    print('No SLAM exploration; no old finish pose assumed.\nMap:',MAP,'\nRoute:',PATH,'\nRun log:',RUN,flush=True)
+    print('Running conservative vehicle-body route preflight (0.15m nominal margin)...',flush=True)
+    route_audit=call(['python3',ROOT/'tools/planning/vehicle_footprint_audit.py',
+                      MAP,PATH,'--required-body-margin','0.15'],timeout=40)
+    print(route_audit.stdout[-850:],flush=True)
+    input('Press ENTER to prepare localization (vehicle stays stopped): ')
+    start('sensor_emulator',['python3','-u',ROOT/'tools/fusion/sim_vesc_imu.py','--ros-args',
+                             '--params-file',ROOT/'config/fusion_sim_sensors_unbiased.yaml'])
+    start('ekf',['ros2','run','robot_localization','ekf_node','--ros-args',
+                 '--params-file',ROOT/'config/fusion_ekf.yaml'])
+    start('scan_relay',['python3','-u',ROOT/'tools/localization/fusion_scan_relay.py'])
+    seed_path=RUN/'live_scan_seed.json'
+    print('Estimating current pose by matching live LiDAR to recovered map (NO oracle)...',flush=True)
+    seed=call(['python3','-u',MISSION/'map_scan_seed.py','--map',MAP,'--path',PATH,
+              '--lap-pose',LAP,'--output',seed_path],timeout=50)
+    print(seed.stdout[-1600:],flush=True)
+    pose=json.loads(seed_path.read_text())
+    if pose['route_distance_m']>0.20:raise RuntimeError('Startup is too far from the recovered path')
+    cfg=yaml.safe_load((ROOT/'config/fusion_amcl.yaml').read_text())
+    prior=cfg.pop('map_server',None)
+    if 'fusion_map_server' not in cfg: cfg['fusion_map_server']=prior or {'ros__parameters':{}}
+    cfg['fusion_map_server'].setdefault('ros__parameters',{})
+    cfg['fusion_map_server']['ros__parameters'].update({
+        'topic_name':'/fusion/localization_map','frame_id':'slam_map',
+        'use_sim_time':False,'yaml_filename':str(MAP)})
+    cfg['amcl']['ros__parameters'].update({
+        'initial_pose':{'x':pose['x'],'y':pose['y'],'z':0.0,'yaw':pose['yaw']},
+        'set_initial_pose':True,'use_sim_time':False,'global_frame_id':'slam_map',
+        'odom_frame_id':'fusion_odom','base_frame_id':'fusion_base',
+        'scan_topic':'/fusion/scan','map_topic':'/fusion/localization_map'})
+    cfg['amcl']['ros__parameters']['update_min_d']=0.02
+    cfg['amcl']['ros__parameters']['update_min_a']=0.02
+    params=RUN/'recovered_map_amcl.yaml';params.write_text(yaml.safe_dump(cfg,sort_keys=False))
+    start('amcl',['ros2','launch',MISSION/'mission_amcl.launch.py',f'params:={params}',f'map_yaml:={MAP}'])
+    wait_active()
+    live=read_amcl_pose()
+    x,y=live['position']['x'],live['position']['y']
+    q=live['orientation'];yaw=math.atan2(2*(q['w']*q['z']+q['x']*q['y']),1-2*(q['y']**2+q['z']**2))
+    error=math.hypot(x-pose['x'],y-pose['y']);yawerr=abs(wrap(yaw-pose['yaw']))
+    print(f'AMCL first pose=({x:.3f},{y:.3f},{math.degrees(yaw):.1f}deg)'
+          f' | scan seed delta={error:.3f}m/{math.degrees(yawerr):.1f}deg',flush=True)
+    if error>0.4 or yawerr>math.radians(25):
+        raise RuntimeError('AMCL disagrees with scan-matched startup: refuses to arm')
+    start('autonomous_drive',['python3','-u',ROOT/'tools/navigation/profiled_amcl_drive.py',
+        '--ros-args','-p',f'waypoints_file:={PATH}',
+        '-p',f'results_file:={RUN/"estimated_drive.csv"}',
+        '-p',f'start_x:={pose["x"]}','-p',f'start_y:={pose["y"]}',
+        '-p',f'start_yaw_rad:={pose["yaw"]}',
+        '-p','start_position_tolerance_m:=0.45',
+        '-p','start_heading_tolerance_deg:=25.0',
+        '-p','speed_cap_mps:=0.40','-p','max_path_cte_m:=0.09',
+        '-p','swept_margin_m:=0.07',
+        '-p','auto_stop_laps:=1'])
+    time.sleep(2)
+    if PROCS['autonomous_drive'].poll() is not None:raise RuntimeError('Controller crashed, see autonomous_drive.log')
+    print('\n=== READY, DISABLED / SPEED 0 ===\n'
+          'Map and Feasible Route loaded; scan-matched initialization passed.\n'
+          'Stops on stale localization/scan, CTE>0.09m, predicted swept-body obstacles or collision.\n'
+          'SIM ONLY. Inspect vehicle position before arming. Ctrl+C cancels.',flush=True)
+    input('Press ENTER to ARM first profiled lap (up to 0.40m/s, sim only): ')
+    call(['ros2','topic','pub','--once','/amcl_drive/enable','std_msgs/msg/Bool','{data: true}'],timeout=15)
+    print('=== PROFILED AMCL DRIVING — NO SIM GROUND TRUTH FOR STEERING ===',flush=True)
+    log=RUN/'autonomous_drive.log';offset=0
+    deadline=time.monotonic()+600
+    while time.monotonic()<deadline:
+        if PROCS['autonomous_drive'].poll() is not None:raise RuntimeError('Controller exited, see autonomous_drive.log')
+        with log.open(errors='replace') as f:
+            f.seek(offset);chunk=f.read();offset=f.tell()
+        for line in chunk.splitlines():
+            if 'DRIVE:' in line or 'STOP:' in line or 'ARMED:' in line or 'LAP' in line:
+                print(line.strip(),flush=True)
+        if 'ESTIMATED LAP 1 COMPLETE' in chunk:
+            print('ESTIMATED LAP COMPLETE; commanded STOP. Log:',RUN,flush=True)
+            return
+        if 'SAFETY HOLD:' in chunk:
+            raise RuntimeError('Guarded controller stopped: see '+str(log))
+        time.sleep(.7)
+    raise RuntimeError('Timeout; see autonomous_drive.log')
+
+
+if __name__=='__main__':
+    try:main()
+    except KeyboardInterrupt:print('\nOperator stopped mission.',flush=True)
+    except Exception as exc:
+        print('\nRESUME STOPPED:',str(exc),file=sys.stderr,flush=True)
+        sys.exit(1)
+    finally:closeall()
