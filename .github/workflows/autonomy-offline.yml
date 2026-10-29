@@ -46,6 +46,7 @@ jobs:
           python -m py_compile \
             tools/navigation/racing_policy.py \
             tools/navigation/confidence_policy.py \
+            tools/navigation/pose_uncertainty.py \
             tools/navigation/trajectory_safety.py \
             tools/navigation/profiled_amcl_drive.py \
             tools/planning/vehicle_footprint_audit.py \
@@ -72,6 +73,7 @@ jobs:
         run: |
           python tests/test_racing_policy.py
           python tests/test_confidence_policy.py
+          python tests/test_pose_uncertainty.py
           python tests/test_localization_summary.py
           python tests/test_amcl_initialization.py
           python tests/test_stationary_probe.py

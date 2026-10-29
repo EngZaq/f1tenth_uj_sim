@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sim_geometry import LASER
+from navigation.pose_uncertainty import planar_covariance
 
 
 def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_max,
@@ -15,14 +16,22 @@ def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_ma
                          wheelbase=0.3302, laser_x=LASER['x_m'],
                          front=0.46145, rear=-0.11855, halfwidth=0.155,
                          margin=0.07, deceleration=0.7, reaction=0.35,
-                         laser_y=LASER['y_m'], laser_yaw=LASER['yaw_rad']):
+                         laser_y=LASER['y_m'], laser_yaw=LASER['yaw_rad'],
+                         pose_covariance=None, uncertainty_sigma=3.):
     """route Nx4 columns s,x,y,yaw; pose=(x,y,yaw) in route map frame.
 
-    Returns (blocked, minimum_obstacle_to_body_distance_m, valid_hit_count).
+    Returns (blocked, minimum_uncertainty_adjusted_body_gap_m, valid_hit_count).
     Uses measured endpoints only; requires independent scan freshness and
     vehicle emergency braking. Map and localization errors need separate margin.
     """
     route = np.asarray(route)
+    covariance=None if pose_covariance is None else planar_covariance(pose_covariance)
+    if (not all(math.isfinite(v) for v in
+                (angle_min,angle_increment,range_min,range_max,velocity)) or
+            angle_increment<=0 or range_min<0 or range_max<=range_min):
+        raise ValueError('Invalid LiDAR geometry or speed')
+    if not math.isfinite(uncertainty_sigma) or uncertainty_sigma<=0:
+        raise ValueError('Invalid pose uncertainty multiplier')
     ranges = np.asarray(ranges, dtype=float)
     if ranges.ndim != 1 or ranges.size < 50 or not 0 <= nearest_idx < len(route):
         raise ValueError('Invalid LiDAR/path inputs')
@@ -56,13 +65,34 @@ def swept_path_collision(ranges, angle_min, angle_increment, range_min, range_ma
                            -s0 * dx + c0 * dy, heading))
 
     nearest = float('inf')
-    for x, y, heading in footprints:
+    for footprint_index,(x, y, heading) in enumerate(footprints):
         dx, dy = hits[:, 0] - x, hits[:, 1] - y
         c, s = math.cos(heading), math.sin(heading)
         lon, lat = c * dx + s * dy, -s * dx + c * dy
         edge_x = np.maximum(np.maximum(rear - lon, lon - front), 0.0)
         edge_y = np.maximum(np.abs(lat) - halfwidth, 0.0)
-        gap = float(np.min(np.hypot(edge_x, edge_y)))
+        distances=np.hypot(edge_x,edge_y)
+        if covariance is not None and footprint_index>0:
+            # The current body and scan share a frame, so global pose error
+            # cancels for footprint 0. Future route rectangles are fixed in
+            # the map. Propagate scan endpoint placement uncertainty onto the
+            # rectangle's separating plane, including position/yaw coupling.
+            dl=lon-np.clip(lon,rear,front)
+            dt=lat-np.clip(lat,-halfwidth,halfwidth)
+            norm=np.maximum(distances,1e-12)
+            nl,nt=dl/norm,dt/norm
+            ch,sh=math.cos(yaw0+heading),math.sin(yaw0+heading)
+            nx,ny=ch*nl-sh*nt,sh*nl+ch*nt
+            j_yaw=nx*(-s0*hits[:,0]-c0*hits[:,1])+ny*(c0*hits[:,0]-s0*hits[:,1])
+            jacobian=np.column_stack((nx,ny,j_yaw))
+            variance=np.einsum('ij,jk,ik->i',jacobian,covariance,jacobian)
+            bound=uncertainty_sigma*np.sqrt(np.maximum(variance,0.))
+            # Bound the omitted second-order rotation term over the same
+            # yaw interval, rather than relying on linearization alone.
+            yaw_interval=uncertainty_sigma*math.sqrt(max(0.,float(covariance[2,2])))
+            bound+=.5*np.linalg.norm(hits,axis=1)*yaw_interval**2
+            distances=distances-bound
+        gap = float(np.min(distances))
         nearest = min(nearest, gap)
         if gap < margin:
             return True, nearest, int(valid.sum())

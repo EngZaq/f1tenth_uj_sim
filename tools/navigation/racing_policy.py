@@ -70,3 +70,15 @@ def ramp_velocity(previous, desired, dt, accel=0.5, decel=0.8):
     upper = previous + accel * dt
     lower = max(0., previous - decel * dt)
     return max(lower, min(upper, max(0., desired)))
+
+
+def route_progress_delta(previous, current, count, max_step=12):
+    """Signed local progress; estimator jitter must not become almost a lap."""
+    if count<3 or not (0<=previous<count and 0<=current<count):
+        raise ValueError('Invalid route progress indices')
+    delta=(current-previous)%count
+    if delta>count//2:
+        delta-=count
+    if abs(delta)>max_step:
+        raise ValueError('route progress discontinuity')
+    return delta

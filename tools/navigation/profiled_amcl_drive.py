@@ -28,8 +28,9 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Empty
 from tf2_ros import Buffer, TransformListener, TransformException
 
-from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity
-from confidence_policy import ConfidenceGate
+from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta
+from confidence_policy import ConfidenceGate, uncertainty_speed_cap
+from pose_uncertainty import planar_covariance, project_uncertainty
 from trajectory_safety import swept_path_collision
 
 
@@ -55,7 +56,9 @@ class ProfiledAMCLDrive(Node):
             'max_pose_age_s': 0.65,
             'max_scan_age_s': 0.45,
             'max_odom_age_s': 0.45,
-            'max_position_std_m': 0.08,
+            'max_across_track_std_m': 0.08,
+            'max_along_track_std_m': 0.12,
+            'max_major_position_std_m': 0.16,
             'max_heading_std_deg': 10.0,
             'max_amcl_jump_m': 0.45,
             'swept_margin_m': 0.07,
@@ -77,10 +80,13 @@ class ProfiledAMCLDrive(Node):
         self.pose_limit = float(p('max_pose_age_s'))
         self.scan_limit = float(p('max_scan_age_s'))
         self.odom_limit = float(p('max_odom_age_s'))
-        self.pos_std_limit = float(p('max_position_std_m'))
+        self.across_std_limit = float(p('max_across_track_std_m'))
+        self.along_std_limit = float(p('max_along_track_std_m'))
+        self.major_std_limit = float(p('max_major_position_std_m'))
         self.yaw_std_limit = math.radians(float(p('max_heading_std_deg')))
-        self.confidence = ConfidenceGate(soft_pos=self.pos_std_limit,
-                                         soft_yaw_deg=float(p('max_heading_std_deg')))
+        self.confidence = ConfidenceGate(soft_pos=self.across_std_limit,
+            soft_along=self.along_std_limit,hard_pos=self.major_std_limit,
+            soft_yaw_deg=float(p('max_heading_std_deg')))
         self.jump_limit = float(p('max_amcl_jump_m'))
         self.margin = float(p('swept_margin_m'))
         self.aim_base = float(p('lookahead_base_m'))
@@ -97,6 +103,8 @@ class ProfiledAMCLDrive(Node):
             raise ValueError('Simulation-only speed cap must be in (0.05, 0.8]m/s')
         if not 0.04 <= self.margin <= 0.2:
             raise ValueError('Invalid predicted footprint collision margin')
+        if not (0<self.across_std_limit<=.08 and .08<self.along_std_limit<self.major_std_limit<=.16):
+            raise ValueError('Invalid route-relative confidence bounds')
         if self.count_publishers(self.drive_topic):
             raise RuntimeError('STOP all existing /drive publishers before starting this controller')
 
@@ -147,7 +155,8 @@ class ProfiledAMCLDrive(Node):
                               'valid_scan_hits', 'no_motion_count',
                               'amcl_pos_std_m', 'amcl_yaw_std_deg', 'confidence_state',
                               'amcl_across_track_std_m', 'amcl_along_track_std_m',
-                              'measured_speed_mps','amcl_stamp_s'])
+                              'measured_speed_mps','amcl_stamp_s','amcl_major_std_m',
+                              'uncertainty_speed_cap_mps'])
         self.timer = self.create_timer(.05, self.tick)
         self.get_logger().warn(
             f'PROFILED CONTROLLER DISABLED; route={p("waypoints_file")}, log={csv_path}, cap={self.speed_limit}m/s. '
@@ -237,6 +246,8 @@ class ProfiledAMCLDrive(Node):
         pos_std = yaw_std = float('nan')
         confidence_state = 'NOT_EVALUATED'
         across_std = along_std = float('nan')
+        major_std = float('nan')
+        confidence_cap = float('nan')
         index = self.index if self.index is not None else -1
         valid_hits = 0
         speed = steer = 0.
@@ -257,29 +268,23 @@ class ProfiledAMCLDrive(Node):
             issue = 'EKF odometry stale'
         else:
             cov = self.pose.covariance
-            if (not all(math.isfinite(cov[i]) and cov[i] >= 0
-                        for i in (0, 7, 35))):
-                issue = 'invalid AMCL covariance diagonal'
+            try:
+                covariance=planar_covariance(cov)
+            except ValueError as exc:
+                issue = str(exc)
             else:
                 pos_std = math.sqrt(max(cov[0], cov[7]))
-                yaw_std = math.sqrt(cov[35])
-                # Diagnostic only: world-axis covariance conflates along-track
-                # and lateral uncertainty. Project Pxy onto route tangent/normal.
-                # Keep the original hard confidence gates until validated.
+                # Distinguish corridor-normal uncertainty from ambiguity along
+                # the corridor. The full matrix also enters the swept guard.
                 px0 = self.pose.pose.position.x
                 py0 = self.pose.pose.position.y
                 diagnostic_idx = int(np.argmin(
                     np.sum((self.route.xy-np.array([px0,py0]))**2,axis=1)))
                 path_yaw = float(self.route.data[diagnostic_idx,3])
-                nx, ny = -math.sin(path_yaw), math.cos(path_yaw)
-                tx, ty = math.cos(path_yaw), math.sin(path_yaw)
-                cxy = .5*(cov[1] + cov[6])
-                lateral_var = nx*nx*cov[0] + 2*nx*ny*cxy + ny*ny*cov[7]
-                tangent_var = tx*tx*cov[0] + 2*tx*ty*cxy + ty*ty*cov[7]
-                across_std = math.sqrt(max(0.,lateral_var))
-                along_std = math.sqrt(max(0.,tangent_var))
+                across_std,along_std,major_std,yaw_std=project_uncertainty(covariance,path_yaw)
                 confidence_state, confidence_detail = self.confidence.check(
-                    mono, self.pose_stamp, pos_std, yaw_std, self.measured_speed)
+                    mono,self.pose_stamp,across_std,yaw_std,self.measured_speed,
+                    along_std=along_std,major_std=major_std)
                 if confidence_state == 'FAULT':
                     issue = confidence_detail
                 elif confidence_state == 'PAUSE':
@@ -304,7 +309,8 @@ class ProfiledAMCLDrive(Node):
                                 raise ValueError('start heading disagreement')
                         if cte > self.cte_limit:
                             raise ValueError(f'estimated CTE {cte:.3f}m exceeds {self.cte_limit:.3f}m')
-                        plan = min(self.speed_limit, self.route.speed_at(index))
+                        confidence_cap=uncertainty_speed_cap(self.speed_limit,along_std,pause_limit=self.along_std_limit)
+                        plan = min(self.speed_limit,self.route.speed_at(index),confidence_cap)
                         lookahead = max(.45, min(.80, self.aim_base + self.aim_gain * plan))
                         steer = self.route.aim(x, y, yaw, index, lookahead, self.max_steer)
                         # Evaluate measured laser endpoints against *predicted
@@ -314,15 +320,11 @@ class ProfiledAMCLDrive(Node):
                             self.scan.angle_increment, self.scan.range_min,
                             self.scan.range_max, self.route.data, (x, y, yaw),
                             index, max(self.measured_speed, self.last_output_speed, plan),
-                            margin=self.margin)
+                            margin=self.margin,pose_covariance=covariance)
                         if blocked:
                             raise ValueError(f'predicted swept-path obstruction {gap:.3f}m, hits={valid_hits}')
                         if self.started and self.index is not None:
-                            delta = (index-self.index) % self.route.n
-                            if delta > 12:
-                                raise ValueError('route progress discontinuity')
-                            if 0 < delta <= 12:
-                                self.progress += delta
+                            self.progress += route_progress_delta(self.index,index,self.route.n)
                         if self.last_xy is not None:
                             step = math.hypot(x-self.last_xy[0], y-self.last_xy[1])
                             if step > .2:
@@ -362,7 +364,8 @@ class ProfiledAMCLDrive(Node):
             f'{pos_std:.4f}', f'{math.degrees(yaw_std):.3f}', confidence_state,
             f'{across_std:.4f}', f'{along_std:.4f}',
             f'{self.measured_speed:.6f}',
-            f'{self.pose_stamp:.9f}' if self.pose_stamp is not None else 'nan'])
+            f'{self.pose_stamp:.9f}' if self.pose_stamp is not None else 'nan',
+            f'{major_std:.4f}',f'{confidence_cap:.4f}'])
         if mono-self.last_print > 1.0:
             self.fp.flush()
             self.get_logger().info(

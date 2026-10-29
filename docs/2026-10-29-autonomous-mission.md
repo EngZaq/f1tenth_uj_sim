@@ -6,6 +6,57 @@ exploration, map saving and route preparation, then stopped before localization
 on a stale SLAM-node graph check. The correction is described below. A complete
 end-to-end ROS/Gym race has not yet been demonstrated with these changes.
 
+## Current runtime uncertainty policy
+
+The later full runs show that a single world-axis position sigma is not a
+sufficient driving policy. With the revised laser model, lateral spread fell
+to about 0.01-0.02 m but along-corridor spread sometimes remained near 0.10 m.
+The car could repeatedly pause in a straight corridor even while its recorded
+tracking error was small. The earlier scalar-gate experiments below are
+historical; the current runtime policy explicitly changes that criterion.
+
+The controller validates the full planar `(x,y,yaw)` covariance, including
+symmetry and positive semidefiniteness. It projects translation uncertainty
+onto the local route tangent and normal. Default pause bounds are 0.08 m
+across track, 0.12 m along track and 10 degrees yaw. The largest position
+ellipse axis still faults at 0.16 m, now independently of map rotation; the
+20-degree yaw hard stop remains. Four fresh stationary observations within
+the current bounds are required after a pause, with the same four-second
+timeout. Initial readiness still requires four fresh estimates inside the
+original 0.08 m world-axis bound before the controller starts.
+
+Above 0.08 m longitudinal sigma, the commanded speed cap decreases smoothly
+from its nominal value to one quarter at 0.12 m (0.40 to 0.10 m/s at defaults).
+This provides additional measurements per metre without demanding that the
+car become perfectly localized along a visually uniform corridor at rest.
+Longitudinal spread above 0.12 m pauses; it is not ignored.
+
+The swept collision check now budgets the complete pose covariance as well.
+For each future route rectangle and measured scan endpoint it finds the
+rectangle's separating-plane normal, propagates `(x,y,yaw)` covariance onto
+that normal and subtracts a three-sigma envelope from the measured gap. It
+also subtracts a bound on the second-order yaw rotation remainder. The base
+0.07 m margin remains in addition. The current-body scan check shares the
+sensor frame, so global pose error cancels there; future route rectangles use
+the covariance budget. Correlations and heading uncertainty are included.
+This is a model-based bound, not calibrated collision probability or a physical
+emergency-stop certificate. Map deformation and missed/occluded obstacles
+remain limitations of the overall stack.
+
+The existing `predicted_body_gap_m` CSV field now reports that conservative,
+uncertainty-adjusted gap. New fields include `amcl_major_std_m` and
+`uncertainty_speed_cap_mps`. The controller parameters are
+`max_across_track_std_m`, `max_along_track_std_m` and
+`max_major_position_std_m`; the former profiled-controller
+`max_position_std_m` scalar parameter is replaced by these explicit bounds.
+
+Tests check global-rotation invariance, invalid/correlated covariance, lateral
+and yaw risks, forward-wall longitudinal risk and the recorded corridor
+uncertainty. Small backward nearest-waypoint corrections now subtract from
+net progress instead of looking like an almost-full-lap jump. Large progress
+and pose discontinuities still stop the controller; estimator jitter cannot
+artificially add laps.
+
 ## Second integrated run: confidence recovery correction
 
 `autonomous_20261029_182122_744147` passed both fresh graph checks, initialized
@@ -254,9 +305,9 @@ the explorer's obstacle checks remain responsible for their proposed motions.
 The complete chain still needs real Gym fault-injection tests, including node
 crashes; the pure policy tests are not substitutes for those live tests.
 
-The driving admission, hard covariance, tracking-error and swept-margin limits
-remain unchanged. Recovery uses the explicit revised exit rule above. If a
-stage cannot satisfy its current checks, the run stops and
+The current route-relative admission and covariance-budgeted swept check are
+specified above. Tracking-error, hard uncertainty and base swept-margin limits
+remain in force. If a stage cannot satisfy its checks, the run stops and
 records the failed stage. A failed or interrupted racing process cannot report
 success merely by exiting with code zero: the requested lap-completion record
 is required.
