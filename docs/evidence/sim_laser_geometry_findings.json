@@ -1,0 +1,24 @@
+{
+  "source_sha256": "0b52eef5eec821eea6f0bd7de32b9cecd00febad180ef49cb22a9bdd8196646c",
+  "measured_body_to_laser_x_m": 0.1,
+  "old_assumed_x_m": 0.275,
+  "disagreement_m": 0.175,
+  "offline_scan_replay": {
+    "map": "maps/uj_technical_loop_v1.yaml",
+    "beams": 271,
+    "ray_march_step_m": 0.00625,
+    "range_rmse_at_measured_mount_m": 0.01696957305344445,
+    "range_rmse_at_old_assumption_m": 0.3643817624440981,
+    "purpose": "Independent offline geometry consistency check using simulator truth; never an online initialization or controller input"
+  },
+  "stationary_recording": {
+    "raw_scan_hz": 29.99874247412665,
+    "fusion_scan_hz": 8.364750573904,
+    "wheel_velocity_std_mps": 0.006550086561802465,
+    "gyro_std_rad_s": 0.010049433964168766,
+    "refresh_requests": 150,
+    "refresh_completed": 150,
+    "nav2_amcl_version": "1.1.20"
+  },
+  "online_effect": "Not yet verified by a full ROS/Gym mission after correcting geometry"
+}

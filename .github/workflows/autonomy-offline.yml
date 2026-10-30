@@ -8,6 +8,20 @@ on:
       - "tools/planning/optimize_vehicle_route.py"
       - "tools/mission/run_profiled_saved_map.py"
       - "tools/mission/mission_amcl.launch.py"
+      - "tools/mission/full_autonomy.py"
+      - "tools/mission/ros_graph.py"
+      - "tools/mission/map_coverage.py"
+      - "tools/mission/mission_first_lap.py"
+      - "tools/mission/mission_slam.launch.py"
+      - "tools/mission/mission_explore.py"
+      - "tools/mission/map_scan_seed.py"
+      - "tools/sim_geometry.py"
+      - "config/sim_laser_geometry.yaml"
+      - "config/fusion_amcl.yaml"
+      - "scripts/run_full_autonomy.zsh"
+      - "tools/planning/prepare_vehicle_route.py"
+      - "tools/localization/fusion_scan_relay.py"
+      - "tools/localization/wait_amcl_ready.py"
       - "tools/localization/sim_localization_audit.py"
       - "tools/localization/initialize_amcl_pose.py"
       - "tools/localization/stationary_localization_probe.py"
@@ -32,11 +46,24 @@ jobs:
           python -m py_compile \
             tools/navigation/racing_policy.py \
             tools/navigation/confidence_policy.py \
+            tools/navigation/pose_uncertainty.py \
             tools/navigation/trajectory_safety.py \
             tools/navigation/profiled_amcl_drive.py \
             tools/planning/vehicle_footprint_audit.py \
             tools/planning/optimize_vehicle_route.py \
             tools/mission/run_profiled_saved_map.py \
+            tools/mission/full_autonomy.py \
+            tools/mission/ros_graph.py \
+            tools/mission/map_coverage.py \
+            tools/mission/mission_first_lap.py \
+            tools/mission/mission_slam.launch.py \
+            tools/mission/mission_explore.py \
+            tools/mission/map_scan_seed.py \
+            tools/sim_geometry.py \
+            tools/planning/prepare_vehicle_route.py \
+            tools/localization/fusion_scan_relay.py \
+            tools/localization/wait_amcl_ready.py \
+            tools/navigation/drive_watchdog.py \
             tools/mission/mission_amcl.launch.py \
             tools/localization/sim_localization_audit.py \
             tools/localization/initialize_amcl_pose.py \
@@ -46,10 +73,48 @@ jobs:
         run: |
           python tests/test_racing_policy.py
           python tests/test_confidence_policy.py
+          python tests/test_pose_uncertainty.py
+          python tests/test_command_swept_collision.py
           python tests/test_localization_summary.py
           python tests/test_amcl_initialization.py
           python tests/test_stationary_probe.py
+          python tests/test_full_autonomy.py
+          python tests/test_ros_graph_handoff.py
+          python tests/test_map_coverage.py
           python tests/test_sim_localization_audit_node.py
           python tests/test_trajectory_safety.py
       - name: Test real-map optimizer command and rejection
         run: python tests/test_optimizer_cli.py
+
+  ros-graph-handoff:
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base-jammy
+    timeout-minutes: 15
+    env:
+      ROS_DOMAIN_ID: "76"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      ROS_HANDOFF_EVIDENCE: /tmp/ros-handoff-evidence
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the same DDS implementation as the laptop
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ros-humble-rmw-cyclonedds-cpp
+      - name: Reject live SLAM and accept its clean departure with real ROS
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 tests/ros_graph_handoff_live.py
+      - name: Confirm one-shot AMCL seed when the first stationary reply is absent
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 tests/ros_amcl_seed_handshake_live.py
+      - name: Preserve live graph observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-handoff-evidence
+          path: /tmp/ros-handoff-evidence
+          if-no-files-found: warn

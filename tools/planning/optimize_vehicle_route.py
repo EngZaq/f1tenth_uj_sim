@@ -7,11 +7,14 @@ and steering limit are satisfied. Nothing here licenses physical driving.
 from pathlib import Path
 import argparse
 import math
+import sys
 import numpy as np
 import yaml
 from PIL import Image
 from scipy.ndimage import distance_transform_edt, map_coordinates
 from scipy.optimize import differential_evolution
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from sim_geometry import BODY_REAR, BODY_FRONT, BODY_HALFWIDTH
 
 
 def build_problem(map_yaml, route_file):
@@ -28,8 +31,8 @@ def build_problem(map_yaml, route_file):
         raise ValueError('Input must have >=100 s;x;y;yaw;kappa;v;a rows')
     if not np.all(np.diff(path[:, 0]) > 0):
         raise ValueError('Route arc length must strictly increase')
-    lon, lat = np.meshgrid(np.linspace(-0.11855, 0.46145, 30),
-                           np.linspace(-0.155, 0.155, 17))
+    lon, lat = np.meshgrid(np.linspace(BODY_REAR, BODY_FRONT, 30),
+                           np.linspace(-BODY_HALFWIDTH, BODY_HALFWIDTH, 17))
     return path, distance, origin, res, lon.ravel(), lat.ravel()
 
 

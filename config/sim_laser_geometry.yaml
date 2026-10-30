@@ -1,0 +1,14 @@
+# Measured in stationary_probe.json, 29 October 2026. Simulation only.
+# base_link->laser TF and offline scan/map check agree with x=0.100 m.
+x_m: 0.100
+y_m: 0.0
+yaw_rad: 0.0
+reference_body_frame: ego_racecar/base_link
+reference_scan_frame: ego_racecar/laser
+# Pinned Gym ST poses are at CoG; fusion_base is the kinematic rear axle.
+# raw CoG->laser is 0.100 m; rear axle->laser is 0.27145 m.
+rear_axle_to_reference_body_x_m: 0.17145
+fusion_body_reference: rear_axle
+rear_axle_to_body_center_x_m: 0.1651
+body_length_m: 0.58
+body_width_m: 0.31

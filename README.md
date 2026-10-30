@@ -1,5 +1,26 @@
 # UJ F1TENTH — Autonomous Racing Simulation
 
+**30 October engineering status: full mission remains blocked.** The latest combined run stopped on AMCL confidence recovery after 0.71 m; zero laps completed. All 110 offline tests and real ROS handoff/seed fixtures pass. See the [current test handoff](docs/2026-10-30-simulation-handoff.md) for exact revisions, failures and the run command.
+
+
+## Automatic mission - experimental, 29 October 2026
+
+Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
+automatic exploration, fresh mapping, route preparation, AMCL startup and three
+estimated-pose laps. The shared laser mounting is corrected to the measured
+0.100 m from Gym’s CoG; the rear-axle fusion frame uses the composed 0.27145 m
+laser offset. A separate command watchdog owns `/drive`. This integrated workflow
+completed exploration, fresh mapping and route preparation in the first laptop
+run. The SLAM-to-AMCL handoff now uses bounded fresh ROS graph checks to avoid
+stale CLI node listings. A complete live ROS/Gym race remains unverified.
+The second laptop run initialized AMCL and drove, then exposed a stricter pause
+recovery bound than its normal driving bound. Recovery now uses four fresh,
+stationary observations. Later full tests led to route-relative confidence,
+uncertainty-based speed reduction and commanded-motion local swept checks. A separate full
+ROS/Gym CI workflow exercises the entire mission and retains each attempt.
+See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
+review branch, run command, stopping behavior, evidence and remaining limits.
+
 <!-- 2026-10-28-STATUS-UPDATE -->
 ## Project status - 28 October 2026
 
@@ -12,7 +33,7 @@ An EKF + Nav2 AMCL estimated-pose controller completed one low-speed lap on the 
 
 This repository is the simulation workspace for a 1/10-scale autonomous race car. Our long-term goal is to explore an initially unknown circuit, generate and save a map, derive a safe driving trajectory, estimate the vehicle's pose using onboard sensors, and race with robust safety monitoring. Physical hardware is developed separately in [EngZaq/f1tenth_uj](https://github.com/EngZaq/f1tenth_uj).
 
-> **Current status:** Automated exploration, saved SLAM mapping, map-derived centerline/trajectory generation, simulator-assisted registration, speed profiling, and repeated Pure Pursuit laps have been demonstrated. **Localization from independent LiDAR data is NOT yet validated for driving.** Racing presently uses *simulator ground-truth pose* (`/ego_racecar/odom`).
+> **Historical status (27 October):** Automated exploration, saved SLAM mapping, map-derived centerline/trajectory generation, simulator-assisted registration, speed profiling, and repeated Pure Pursuit laps have been demonstrated. **Localization from independent LiDAR data is NOT yet validated for driving.** Racing presently uses *simulator ground-truth pose* (`/ego_racecar/odom`).
 
 ## Historical results at a glance (through 27 October)
 
