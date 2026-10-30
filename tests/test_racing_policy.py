@@ -68,5 +68,17 @@ class ProfileTest(unittest.TestCase):
                 self.assertLess(worst,.07)
 
 
+class TrackingSpeedTest(unittest.TestCase):
+    def test_tracking_error_slows_before_stop_boundary(self):
+        from racing_policy import tracking_speed_cap
+        values=[tracking_speed_cap(.4,x) for x in (0.,.02,.03,.04,.05,.06,.08)]
+        self.assertEqual(values[:2],[.4,.4])
+        self.assertTrue(all(a>=b for a,b in zip(values,values[1:])))
+        self.assertAlmostEqual(values[-1],.1)
+        self.assertAlmostEqual(tracking_speed_cap(.08,.08),.08)
+        for bad in (-.01,float('nan')):
+            with self.assertRaises(ValueError):tracking_speed_cap(.4,bad)
+
+
 if __name__ == '__main__':
     unittest.main()

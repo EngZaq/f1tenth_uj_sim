@@ -89,3 +89,11 @@ def tracking_lookahead(speed, base=.30, gain=.20):
     if not all(math.isfinite(v) for v in (speed,base,gain)) or speed<0 or base<=0 or gain<0:
         raise ValueError('Invalid tracking lookahead inputs')
     return max(.25,min(.60,base+gain*speed))
+
+
+def tracking_speed_cap(nominal, cte, limit=.09):
+    """Reduce tracking demand before the CTE stop boundary is reached."""
+    if not all(math.isfinite(v) for v in (nominal,cte,limit)) or nominal<=0 or cte<0 or limit<=0:
+        raise ValueError('Invalid tracking speed inputs')
+    fraction=max(0.,min(1.,(cte-.02)/max(.001,limit-.05)))
+    return nominal-(nominal-min(.10,nominal))*fraction

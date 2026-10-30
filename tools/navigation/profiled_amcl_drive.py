@@ -30,7 +30,7 @@ from std_msgs.msg import Bool
 from std_srvs.srv import Empty
 from tf2_ros import Buffer, TransformListener, TransformException
 
-from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta, tracking_lookahead
+from racing_policy import ProfiledRoute, normalized_angle, ramp_velocity, route_progress_delta, tracking_lookahead, tracking_speed_cap
 from confidence_policy import ConfidenceGate, uncertainty_speed_cap
 from pose_uncertainty import planar_covariance, project_uncertainty
 from trajectory_safety import command_swept_collision, stopping_horizon, select_clear_speed
@@ -351,7 +351,9 @@ class ProfiledAMCLDrive(Node):
                         if cte > self.cte_limit:
                             raise ValueError(f'estimated CTE {cte:.3f}m exceeds {self.cte_limit:.3f}m')
                         confidence_cap=uncertainty_speed_cap(self.speed_limit,along_std,pause_limit=self.along_std_limit)
-                        route_cap = min(self.speed_limit,self.route.speed_at(index),confidence_cap)
+                        route_cap = tracking_speed_cap(
+                            min(self.speed_limit,self.route.speed_at(index),confidence_cap),
+                            cte,self.cte_limit)
                         # Compensate scan age through local odometry, then roll
                         # out the actual body-frame steering command. Global
                         # map/AMCL translation error cancels from this geometry.
