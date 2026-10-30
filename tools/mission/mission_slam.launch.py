@@ -16,8 +16,6 @@ def generate_launch_description():
                             'map_frame':'slam_map',
                             'scan_topic':'/fusion/scan',
                             'map_update_interval':3.0,
-                            'minimum_travel_distance':0.12,
-                            'minimum_travel_heading':0.10,
                             'do_loop_closing':True}],
         remappings=[('map','/mission/slam_map'),
                     ('map_metadata','/mission/slam_map_metadata')])])
