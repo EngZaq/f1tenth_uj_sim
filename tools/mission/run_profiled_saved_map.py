@@ -235,7 +235,7 @@ def main():
         return
     if args.autonomous:
         ready=call(['python3','-u',ROOT/'tools/localization/wait_amcl_ready.py',
-                    '--output',RUN/'localization_ready.json'],timeout=55)
+                    '--output',RUN/'localization_ready.json','--route',PATH],timeout=55)
         print(ready.stdout,flush=True)
     start('autonomous_drive',['python3','-u',ROOT/'tools/navigation/profiled_amcl_drive.py',
         '--ros-args','-p',f'waypoints_file:={PATH}',

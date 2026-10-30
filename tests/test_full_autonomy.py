@@ -126,6 +126,19 @@ class WatchdogTest(unittest.TestCase):
 
 
 class ReadyTest(unittest.TestCase):
+    def test_startup_projects_corridor_uncertainty_without_relaxing_across_limit(self):
+        for heading in (0.,.7,1.5):
+            c,s=math.cos(heading),math.sin(heading)
+            xx=c*c*.11**2+s*s*.03**2
+            yy=s*s*.11**2+c*c*.03**2
+            xy=c*s*(.11**2-.03**2)
+            gate=READY.Readiness()
+            for i in range(4):ok=gate.observe(i,.1,xx,xy,xy,yy,.001,heading)
+            self.assertTrue(ok)
+            gate=READY.Readiness()
+            for i in range(6):
+                self.assertFalse(gate.observe(i,.1,.03**2,0.,0.,.081**2,.001,0.))
+
     def test_four_fresh_distinct_estimates_required(self):
         p=READY.Readiness()
         self.assertFalse(p.observe(1.,.1,.004,0.,0.,.004,.001))

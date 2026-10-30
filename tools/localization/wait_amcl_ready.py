@@ -14,11 +14,18 @@ class Readiness:
         self.last_stamp = None
         self.reason = 'waiting for AMCL'
 
-    def observe(self, stamp, age, xx, xy, yx, yy, yaw_variance):
+    def observe(self, stamp, age, xx, xy, yx, yy, yaw_variance, path_yaw=None):
+        confidence = math.sqrt(max(0.,xx,yy)) <= .08
+        if path_yaw is not None and all(math.isfinite(v) for v in (xx,xy,yx,yy,path_yaw)):
+            c,s=math.cos(path_yaw),math.sin(path_yaw)
+            across=s*s*xx-c*s*(xy+yx)+c*c*yy
+            along=c*c*xx+c*s*(xy+yx)+s*s*yy
+            major=.5*(xx+yy+math.hypot(xx-yy,xy+yx))
+            confidence=(across<=.08**2 and along<=.12**2 and major<=.16**2)
         valid = (all(math.isfinite(v) for v in (stamp,age,xx,xy,yx,yy,yaw_variance)) and
                  xx >= 0 and yy >= 0 and yaw_variance >= 0 and
                  abs(xy-yx) <= 1e-9 and xx*yy >= (.5*(xy+yx))**2-1e-12 and
-                 -.05 <= age <= .65 and math.sqrt(max(xx,yy)) <= .08 and
+                 -.05 <= age <= .65 and confidence and
                  math.sqrt(yaw_variance) <= math.radians(10))
         if stamp != self.last_stamp:
             self.good = self.good+1 if valid and (self.last_stamp is None or stamp > self.last_stamp) else 0
@@ -32,7 +39,14 @@ class Readiness:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--route', type=Path)
     args = parser.parse_args()
+    route = None
+    if args.route is not None:
+        import numpy as np
+        route=np.loadtxt(args.route,delimiter=';',comments='#')
+        if route.ndim!=2 or route.shape[1]<4 or not np.isfinite(route).all():
+            raise ValueError('Invalid readiness route')
     import rclpy
     from rclpy.node import Node
     from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -49,7 +63,12 @@ def main():
         c = message.pose.covariance
         stamp = message.header.stamp.sec+message.header.stamp.nanosec*1e-9
         now = node.get_clock().now().nanoseconds*1e-9
-        ready = gate.observe(stamp, now-stamp, c[0], c[1], c[6], c[7], c[35])
+        path_yaw=None
+        if route is not None:
+            p=message.pose.pose.position
+            index=int(np.argmin((route[:,1]-p.x)**2+(route[:,2]-p.y)**2))
+            path_yaw=float(route[index,3])
+        ready = gate.observe(stamp, now-stamp, c[0], c[1], c[6], c[7], c[35],path_yaw)
     node.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', callback, 10)
     deadline = time.monotonic()+45.
     try:
