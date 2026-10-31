@@ -1,0 +1,72 @@
+name: Full ROS Gym simulation mission
+
+on:
+  pull_request:
+    paths:
+      - "tools/navigation/**"
+      - "tools/mission/**"
+      - "tools/fusion/**"
+      - "tools/localization/**"
+      - "tools/planning/**"
+      - "config/**"
+      - "patches/simulator/**"
+      - "scripts/run_full_autonomy.zsh"
+      - ".github/scripts/setup_gym_ci.sh"
+      - ".github/workflows/autonomy-gym.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: full-gym-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unknown-map-three-laps:
+    runs-on: ubuntu-22.04
+    container: ros:humble-ros-base-jammy
+    timeout-minutes: 30
+    env:
+      ROS_DOMAIN_ID: "78"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      QT_QPA_PLATFORM: offscreen
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROS simulation and localization dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git patch zsh python3-pip python3-venv python3-colcon-common-extensions \
+            libgl1 libegl1 libxkbcommon0 \
+            ros-humble-rmw-cyclonedds-cpp ros-humble-ackermann-msgs \
+            ros-humble-robot-localization ros-humble-slam-toolbox \
+            ros-humble-nav2-amcl ros-humble-nav2-map-server \
+            ros-humble-nav2-lifecycle-manager ros-humble-foxglove-bridge \
+            ros-humble-robot-state-publisher ros-humble-xacro
+      - name: Build the pinned Gym dependencies with the recorded simulator patch
+        run: bash .github/scripts/setup_gym_ci.sh
+      - name: Run unknown-map exploration through three AMCL laps
+        run: |
+          export F1TENTH_SIM_WS="$GITHUB_WORKSPACE/.ci_sim_ws"
+          timeout --signal=INT --kill-after=30s 20m \
+            zsh scripts/run_full_autonomy.zsh --laps 3 2>&1 | tee full_gym_console.log
+      - name: Summarize and check recorded physical mission evidence
+        if: always()
+        run: |
+          if [[ -f .ci_sim_ws/.venv/bin/activate ]]; then
+            source .ci_sim_ws/.venv/bin/activate
+            python3 -u .github/scripts/report_gym_ci.py
+          fi
+      - name: Retain complete mission evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-gym-mission-evidence
+          path: |
+            full_gym_console.log
+            results/missions/autonomous_*
+            .ci_sim_ws/log/latest_build
+          if-no-files-found: warn

@@ -1,0 +1,133 @@
+{
+  "scope": "Simulation mapping, localization and planning; racing remains paused. Historical stopped runs are retained for diagnosis.",
+  "comparison_limit": "One run per exploration setting; no equal-accuracy or repeatability claim.",
+  "mapping_runs": {
+    "124702": {
+      "result": "COMPLETED_MAPPING_AND_PLANNING",
+      "total_s": 260.6008474826813,
+      "exploration_stage_s": 230.1787703037262,
+      "waypoints": 339,
+      "route_length_m": 33.82453757884924,
+      "generated_optimized_speed_range_mps": [
+        0.607107,
+        0.8
+      ],
+      "profile_executed": false,
+      "route_preparation": {
+        "accepted": true,
+        "attempts": [
+          {
+            "smoothing_sigma_points": 0.0,
+            "accepted": false,
+            "audit": "Original min body clearance: 0.348m at index 281\nCandidate min at waypoints 0.354m; between waypoints 0.354m; peak steering 24.85deg; peak lateral shift 0.033m\nConservative cell min 0.354m; interpolated min 0.364m\nREJECTED: nominal geometry requires at least 0.150m; do not drive. Improve mapping or trajectory planning.\n"
+          },
+          {
+            "smoothing_sigma_points": 0.5,
+            "accepted": true,
+            "audit": "Original min body clearance: 0.348m at index 281\nCandidate min at waypoints 0.354m; between waypoints 0.354m; peak steering 21.62deg; peak lateral shift 0.027m\nConservative cell min 0.354m; interpolated min 0.365m\nPASS nominal map geometry, NOT validated for localization/tracking: /home/zaids_laptop/f1tenth_supervisor_demo/results/missions/autonomous_20261031_124702_440857/new_track_body_optimized.csv\nPlanned speed envelope range: 0.6071067811865476 0.8\n"
+          }
+        ]
+      }
+    },
+    "131817": {
+      "result": "COMPLETED_MAPPING_AND_PLANNING",
+      "total_s": 86.95693898200989,
+      "exploration_stage_s": 55.072479009628296,
+      "waypoints": 339,
+      "route_length_m": 33.85876474334661,
+      "generated_optimized_speed_range_mps": [
+        0.615891,
+        0.8
+      ],
+      "profile_executed": false,
+      "route_preparation": {
+        "accepted": true,
+        "attempts": [
+          {
+            "smoothing_sigma_points": 0.0,
+            "accepted": false,
+            "audit": "Original min body clearance: 0.354m at index 43\nCandidate min at waypoints 0.350m; between waypoints 0.340m; peak steering 28.19deg; peak lateral shift 0.036m\nConservative cell min 0.350m; interpolated min 0.354m\nREJECTED: nominal geometry requires at least 0.150m; do not drive. Improve mapping or trajectory planning.\n"
+          },
+          {
+            "smoothing_sigma_points": 0.5,
+            "accepted": true,
+            "audit": "Original min body clearance: 0.355m at index 275\nCandidate min at waypoints 0.358m; between waypoints 0.358m; peak steering 23.88deg; peak lateral shift 0.029m\nConservative cell min 0.358m; interpolated min 0.366m\nPASS nominal map geometry, NOT validated for localization/tracking: /home/zaids_laptop/f1tenth_supervisor_demo/results/missions/autonomous_20261031_131817_595257/new_track_body_optimized.csv\nPlanned speed envelope range: 0.6158910531638178 0.8\n"
+          }
+        ]
+      }
+    }
+  },
+  "latest_localization": {
+    "paired_observations": 412,
+    "elapsed_span_s": 107.3,
+    "error_definition": "Relative drift after first-sample rigid alignment, all valid paired observations; not absolute map accuracy.",
+    "completed_laps": 0,
+    "net_progress": 104,
+    "route_waypoints": 339,
+    "final_nearest_index": 108,
+    "stop_reason": "no safe local speed: measured/proposed stopping tube obstructed",
+    "amcl_relative_pos_error_m": {
+      "rms": 0.44021003402915687,
+      "max_abs": 0.84802
+    },
+    "ekf_relative_pos_error_m": {
+      "rms": 0.02219739698178573,
+      "max_abs": 0.04074
+    },
+    "amcl_relative_yaw_error_deg": {
+      "rms": 7.035588643509484,
+      "max_abs": 12.179
+    },
+    "ekf_relative_yaw_error_deg": {
+      "rms": 0.3260104866083923,
+      "max_abs": 0.706
+    }
+  },
+  "files": [
+    {
+      "path": "docs/F1TENTH_COMPLETE_PROJECT_LOG_2026-10-31.md",
+      "sha256": "d4a28b4d86d43c86267421e4123e9fad8cc1a0d1c594d0fae0117c439c24651e",
+      "bytes": 65632
+    },
+    {
+      "path": "docs/presentations/F1TENTH_Project_Progress_2026-10-31.pptx",
+      "sha256": "33b5bec58dfaad116689169a16e406190f0628f17defdac21aecfc8571822e28",
+      "bytes": 114360
+    },
+    {
+      "path": "docs/assets/F1TENTH_Supervisor_Results_20261031.png",
+      "sha256": "8a1cbe2116454763c756f69b9faa93f23de47c38af86f06d91f2f3f1b9badd5e",
+      "bytes": 617408
+    },
+    {
+      "path": "docs/assets/F1TENTH_Fast_Exploration_Results_20261031.png",
+      "sha256": "bfe827bd72b696c27b4445cabd20fbb7cfc63a74f28479bc2cc47e7fb870d879",
+      "bytes": 623449
+    },
+    {
+      "path": "docs/evidence/2026-10-31/f1tenth_sim_1mps_exploration.patch.gz",
+      "sha256": "f52040037a846acc3756c3f1a79ef2aefb7017f1ed0ed3064c37fc33e795f619",
+      "bytes": 1901
+    },
+    {
+      "path": "docs/evidence/2026-10-31/autonomous_20261031_124702_440857.zip",
+      "sha256": "bdc88ce2b89ef3cd5a7006b472487fa7fc5d8946ba377f5ffae9bcbb94caae6a",
+      "bytes": 84833
+    },
+    {
+      "path": "docs/evidence/2026-10-31/autonomous_20261031_131817_595257.zip",
+      "sha256": "2a9446f029d460e6977a32ad141739b5b867f361cf3f4299b1f7b83cf5380ea1",
+      "bytes": 83354
+    },
+    {
+      "path": "docs/evidence/2026-10-31/localization_attempt_133408.zip",
+      "sha256": "8d1f8cc25dd0f76dff1c40341be82a4bdd21e7591963016113ff80a535692f00",
+      "bytes": 74054
+    },
+    {
+      "path": "docs/evidence/2026-10-31/localization_attempt_134058.zip",
+      "sha256": "9b235791abea1cccf7b0ca2119620aa4940c867b5297bc0188c64cf564bf88dc",
+      "bytes": 166753
+    }
+  ]
+}

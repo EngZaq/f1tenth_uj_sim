@@ -24,7 +24,7 @@ def main():
     command=[sys.executable,str(root/'tools/planning/extract_robust_centerline.py'),
              str(mapfile),'--out',str(out),'--step','0.10',
              '--max-speed','0.35',
-             '--expected-length',str(pose['distance_odom_m'])]
+             '--expected-length',str(pose.get('estimated_lap_length_m',pose['distance_odom_m']))]
     print('Recovering previously mapped track; NO exploration or driving...',flush=True)
     subprocess.run(command,check=True)
     command=[sys.executable,str(root/'tools/mission/orient_mission_centerline.py'),

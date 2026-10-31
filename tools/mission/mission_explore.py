@@ -55,6 +55,8 @@ def main():
     except (KeyboardInterrupt,rclpy.executors.ExternalShutdownException): pass
     finally:
         for _ in range(8):
+            if not rclpy.ok():
+                break
             msg=AckermannDriveStamped()
             msg.drive.speed=0.0
             n.drive.publish(msg)

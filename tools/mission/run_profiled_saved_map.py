@@ -2,7 +2,8 @@
 """Resume previously mapped track, map-matched startup -> AMCL -> guarded driving.
 
 Simulation ONLY. Does not invoke exploration or SLAM Toolbox. Uses no simulator
-truth for controller commands or startup map scan matching. Operator must arm.
+truth for controller commands or startup map scan matching. Arming is manual
+unless the explicit --autonomous simulation option is selected.
 Experimental profiled controller; leave original saved-map launcher untouched.
 """
 from __future__ import annotations
@@ -17,6 +18,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 import yaml
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from sim_geometry import LASER
+from mission.ros_graph import topic_info_args, wait_for_nodes_absent
 
 ROOT=Path(__file__).resolve().parents[2]
 MISSION=ROOT/'tools/mission'
@@ -27,6 +31,7 @@ PATH=Path.home()/'f1tenth_sim/results/missions/20261028_112407/new_track_body_op
 RUN=ROOT/'results/missions'/('profiled_'+datetime.now().strftime('%Y%m%d_%H%M%S'))
 PROCS={}
 HANDLES={}
+DRIVE_TOPIC='/drive'
 
 
 def call(args,timeout=12,check=True):
@@ -64,7 +69,7 @@ def stop(name):
 
 
 def zero_drive():
-    try:call(['ros2','topic','pub','--once','/drive','ackermann_msgs/msg/AckermannDriveStamped',
+    try:call(['ros2','topic','pub','--once',DRIVE_TOPIC,'ackermann_msgs/msg/AckermannDriveStamped',
               '{drive: {speed: 0.0, steering_angle: 0.0}}'],timeout=5,check=False)
     except Exception:pass
 
@@ -106,18 +111,36 @@ def wrap(a):return math.atan2(math.sin(a),math.cos(a))
 
 
 def main():
+    global MAP,LAP,PATH,RUN,DRIVE_TOPIC
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--localization-only',action='store_true',
                         help='Record stationary localization; never start or arm a controller')
     parser.add_argument('--observe-seconds',type=float,default=45.0)
     parser.add_argument('--seed-position-std-m',type=float,default=0.10)
     parser.add_argument('--seed-yaw-std-deg',type=float,default=5.0)
+    parser.add_argument('--mission-dir',type=Path)
+    parser.add_argument('--autonomous',action='store_true',help='Automatically prepare, wait for confidence, and arm in simulation')
+    parser.add_argument('--laps',type=int,default=3)
+    parser.add_argument('--speed-cap',type=float,default=.40)
+    parser.add_argument('--drive-topic',choices=['/drive','/mission/drive'],default='/drive')
     args=parser.parse_args()
+    if args.laps<1 or not math.isfinite(args.speed_cap) or not .05<args.speed_cap<=.8:
+        parser.error('laps must be positive; speed cap must be in (0.05,0.8]')
+    DRIVE_TOPIC=args.drive_topic
+    if args.mission_dir:
+        directory=args.mission_dir.expanduser().resolve()
+        MAP=directory/'new_track.yaml';LAP=directory/'lap_pose.json'
+        PATH=directory/'new_track_body_optimized.csv'
+        RUN=directory/('race_'+datetime.now().strftime('%Y%m%d_%H%M%S'))
+    if args.autonomous or not args.localization_only:
+        metadata=MAP.parent/'laser_geometry.json'
+        if not metadata.is_file() or json.loads(metadata.read_text())!=LASER:
+            raise RuntimeError('Saved map has no matching laser calibration. Use the full mission to build a fresh map.')
     for key in ('observe_seconds','seed_position_std_m','seed_yaw_std_deg'):
         value=getattr(args,key)
         if not math.isfinite(value) or value<=0:
             parser.error(f'{key} must be finite and positive')
-    required=[MAP,RECOVERED/'new_track.pgm',LAP,PATH,
+    required=[MAP,MAP.with_suffix('.pgm'),LAP,PATH,
               ROOT/'tools/fusion/sim_vesc_imu.py',ROOT/'tools/localization/fusion_scan_relay.py',
               ROOT/'tools/navigation/profiled_amcl_drive.py',ROOT/'tools/planning/vehicle_footprint_audit.py',ROOT/'tools/localization/sim_localization_audit.py',MISSION/'mission_amcl.launch.py',
               MISSION/'map_scan_seed.py',ROOT/'config/fusion_amcl.yaml',
@@ -126,23 +149,22 @@ def main():
         required.append(ROOT/'tools/localization/stationary_localization_probe.py')
     for f in required:
         if not f.exists():raise RuntimeError(f'Missing {f}')
-    sim=call(['ros2','topic','info','/ego_racecar/odom'],check=False)
+    RUN.mkdir(parents=True,exist_ok=True)
+    wait_for_nodes_absent(call,output=RUN/'localization_handoff.json')
+    sim=call(topic_info_args('/ego_racecar/odom'),check=False)
     if sim.returncode or 'Publisher count: 1' not in sim.stdout:
         raise RuntimeError('Simulator is not running. Start zsh scripts/run_sim.zsh in Terminal 1')
-    drive=call(['ros2','topic','info','/drive'],check=False)
-    if 'Publisher count: 0' not in drive.stdout:
+    drive=call(topic_info_args(DRIVE_TOPIC),check=False)
+    if drive.returncode==0 and 'Publisher count: 0' not in drive.stdout:
         raise RuntimeError(f'Other drive publisher exists. Stop prior autonomous controllers!\n{drive.stdout}')
-    for node in ('/amcl','/slam_toolbox'):
-        nodes=call(['ros2','node','list'],check=False).stdout
-        if node in nodes.splitlines(): raise RuntimeError(f'{node} already running; stop previous stack first')
-    RUN.mkdir(parents=True,exist_ok=True)
     print('\n===== PROFILED SAVED-MAP LAP (SIMULATION ONLY / ENGINEERING BRANCH) =====',flush=True)
     print('No SLAM exploration; no old finish pose assumed.\nMap:',MAP,'\nRoute:',PATH,'\nRun log:',RUN,flush=True)
     print('Running conservative vehicle-body route preflight (0.15m nominal margin)...',flush=True)
     route_audit=call(['python3',ROOT/'tools/planning/vehicle_footprint_audit.py',
                       MAP,PATH,'--required-body-margin','0.15'],timeout=40)
     print(route_audit.stdout[-850:],flush=True)
-    input('Press ENTER to prepare localization (vehicle stays stopped): ')
+    if not args.autonomous:
+        input('Press ENTER to prepare localization (vehicle stays stopped): ')
     start('sensor_emulator',['python3','-u',ROOT/'tools/fusion/sim_vesc_imu.py','--ros-args',
                              '--params-file',ROOT/'config/fusion_sim_sensors_unbiased.yaml'])
     start('ekf',['ros2','run','robot_localization','ekf_node','--ros-args',
@@ -211,6 +233,10 @@ def main():
             raise RuntimeError('Stationary probe failed; see stationary_probe.log')
         print('STATIONARY OBSERVATION COMPLETE; review truth audit before driving.',flush=True)
         return
+    if args.autonomous:
+        ready=call(['python3','-u',ROOT/'tools/localization/wait_amcl_ready.py',
+                    '--output',RUN/'localization_ready.json','--route',PATH],timeout=55)
+        print(ready.stdout,flush=True)
     start('autonomous_drive',['python3','-u',ROOT/'tools/navigation/profiled_amcl_drive.py',
         '--ros-args','-p',f'waypoints_file:={PATH}',
         '-p',f'results_file:={RUN/"estimated_drive.csv"}',
@@ -218,29 +244,33 @@ def main():
         '-p',f'start_yaw_rad:={pose["yaw"]}',
         '-p','start_position_tolerance_m:=0.45',
         '-p','start_heading_tolerance_deg:=25.0',
-        '-p','speed_cap_mps:=0.40','-p','max_path_cte_m:=0.09',
+        '-p',f'speed_cap_mps:={args.speed_cap}','-p','max_path_cte_m:=0.09',
         '-p','swept_margin_m:=0.07',
-        '-p','auto_stop_laps:=1'])
+        '-p',f'auto_stop_laps:={args.laps}','-p',f'drive_topic:={DRIVE_TOPIC}'])
     time.sleep(2)
     if PROCS['autonomous_drive'].poll() is not None:raise RuntimeError('Controller crashed, see autonomous_drive.log')
     print('\n=== READY, DISABLED / SPEED 0 ===\n'
           'Map and Feasible Route loaded; scan-matched initialization passed.\n'
           'Stops on stale localization/scan, CTE>0.09m, predicted swept-body obstacles or collision.\n'
           'SIM ONLY. Inspect vehicle position before arming. Ctrl+C cancels.',flush=True)
-    input('Press ENTER to ARM first profiled lap (up to 0.40m/s, sim only): ')
+    if not args.autonomous:
+        input('Press ENTER to ARM profiled laps (simulation only): ')
     call(['ros2','topic','pub','--once','/amcl_drive/enable','std_msgs/msg/Bool','{data: true}'],timeout=15)
     print('=== PROFILED AMCL DRIVING — NO SIM GROUND TRUTH FOR STEERING ===',flush=True)
     log=RUN/'autonomous_drive.log';offset=0
-    deadline=time.monotonic()+600
+    deadline=time.monotonic()+max(600,args.laps*400)
     while time.monotonic()<deadline:
         if PROCS['autonomous_drive'].poll() is not None:raise RuntimeError('Controller exited, see autonomous_drive.log')
         with log.open(errors='replace') as f:
             f.seek(offset);chunk=f.read();offset=f.tell()
         for line in chunk.splitlines():
-            if 'DRIVE:' in line or 'STOP:' in line or 'ARMED:' in line or 'LAP' in line:
+            if any(token in line for token in ('DRIVE:','STOP:','ARMED:','LAP','SAFETY HOLD:')):
                 print(line.strip(),flush=True)
-        if 'ESTIMATED LAP 1 COMPLETE' in chunk:
-            print('ESTIMATED LAP COMPLETE; commanded STOP. Log:',RUN,flush=True)
+        if f'ESTIMATED LAP {args.laps} COMPLETE' in chunk:
+            (RUN/'race_result.json').write_text(json.dumps({
+                'completed_estimated_laps':args.laps,'requested_laps':args.laps,
+                'independent_truth_acceptance':'not evaluated by controller'},indent=2)+'\n')
+            print('REQUESTED ESTIMATED LAPS COMPLETE; commanded STOP. Log:',RUN,flush=True)
             return
         if 'SAFETY HOLD:' in chunk:
             raise RuntimeError('Guarded controller stopped: see '+str(log))

@@ -11,6 +11,18 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Bool
 from ackermann_msgs.msg import AckermannDriveStamped
 
+def exploration_speed_limit(requested, steering, clearance, wheelbase, stop):
+    """SIM hypothesis: 0.60 s reaction, 0.70 m/s^2 braking, 0.60 m/s^2 lateral."""
+    if (not all(math.isfinite(v) for v in (requested,steering,clearance,wheelbase,stop))
+            or not 0 <= requested <= 1.0 or wheelbase <= 0 or stop <= 0):
+        raise ValueError('Invalid exploration speed inputs')
+    available = max(0., clearance-stop)
+    braking_cap = math.sqrt((.7*.60)**2+2*.7*available)-.7*.60
+    curvature = abs(math.tan(steering))/wheelbase
+    corner_cap = math.sqrt(.60/max(curvature,1e-6))
+    return max(0.,min(requested,braking_cap,corner_cap))
+
+
 class ExplorationController(Node):
     def __init__(self):
         super().__init__('uj_exploration_controller')
@@ -32,6 +44,7 @@ class ExplorationController(Node):
         self.drive = self.create_publisher(AckermannDriveStamped, '/drive', 10)
         self.create_timer(0.05, self.tick)
         self.last_log_ns = 0
+        self.last_speed = 0.
         self.get_logger().info('Explorer started; drive=%s' % self.get_parameter('enable_drive').value)
 
     def scan_cb(self, msg):
@@ -92,6 +105,8 @@ class ExplorationController(Node):
         speed *= max(0.45, 1.0-0.5*abs(steer)/max(limit,0.01))
         if front_clearance < 1.0:
             speed = min(speed, 0.15)
+        speed = exploration_speed_limit(speed,steer,front_clearance,
+            float(self.get_parameter('wheelbase').value),stop)
         return steer, speed, 'ok'
 
     def tick(self):
@@ -105,6 +120,8 @@ class ExplorationController(Node):
                 reason = 'collision'
             else:
                 steer, speed, reason = self.compute()
+        speed = min(speed,self.last_speed+.4*.05)
+        self.last_speed = speed
         cmd = AckermannDriveStamped()
         cmd.header.stamp = now.to_msg()
         cmd.drive.steering_angle = float(steer)

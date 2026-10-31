@@ -1,0 +1,35 @@
+{
+  "run": "autonomous_20261029_164139_586206",
+  "source": "User-uploaded f1tenth_sim_seed_check(1).zip, 29 October 2026",
+  "files_sha256": {
+    "race.log": "d9801236b8251b1476e22c9d51d42e86cfddb8bc9272042247ef3a5cc1bd5f0c",
+    "slam.log": "4c6959adeeac947ce453b5d9c52e105b96426e4a4f87684943ee70d94896b15a",
+    "new_track.yaml": "055953006735e7250e7aa2551de4951d204fd142a034e522e66271907b4e19b7",
+    "new_track.pgm": "0de62e8bf0e78cf83a093d71d268baad891e05394634408c7a9ff2bc38df2005",
+    "new_track_body_optimized.csv": "1fb1f7f149975a6b474f4cf928925c4d48baa79bdb1d3bb153d8b7e8fdff262f",
+    "lap_pose.json": "661795ae607a8b38d2518ad9924ab2c76f70daf93b13462fc498a7df46f3c009"
+  },
+  "observed_failure": "RESUME STOPPED: /slam_toolbox already running; stop previous stack first",
+  "observed_shutdown": "SLAM launch reports child process finished cleanly before racing started",
+  "inference": "Immediate daemon-backed graph check retained a departed mapping node; fresh bounded discovery required",
+  "mapping": {
+    "distance_odom_m": 34.212,
+    "duration_s": 227.07,
+    "width_cells": 220,
+    "height_cells": 296,
+    "resolution_m": 0.05
+  },
+  "route": {
+    "waypoints": 374,
+    "minimum_body_clearance_waypoints_m": 0.25,
+    "minimum_body_clearance_dense_m": 0.224,
+    "peak_required_steering_deg": 23.741319250596852,
+    "passes_original_nominal_geometry": true
+  },
+  "offline_ideal_kinematic_replay": {
+    "laps": 3,
+    "peak_cte_m": 0.04393374281386555,
+    "duration_s": 279.55,
+    "assumptions": "Perfect pose, kinematic bicycle, no ROS/Gym/sensors/actuator dynamics; not live mission validation"
+  }
+}

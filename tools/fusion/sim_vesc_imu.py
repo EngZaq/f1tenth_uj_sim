@@ -64,7 +64,10 @@ class SimVescImu(Node):
     def on_truth(self, truth):
         stamp = truth.header.stamp
         now_ns = time_ns(stamp)
-        vx = float(truth.twist.twist.linear.x)  # Simulator body-forward velocity
+        # ST publishes the CoG twist. Translating along body x to the rear
+        # axle leaves vx and yaw rate unchanged (only lateral velocity changes).
+        # fusion_base is explicitly the rear axle, not a renamed CoG frame.
+        vx = float(truth.twist.twist.linear.x)
         wz = float(truth.twist.twist.angular.z)  # Simulator body yaw rate
 
         if self.last_vesc_ns is not None and now_ns < self.last_vesc_ns:

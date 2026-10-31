@@ -50,7 +50,7 @@ def stamp_s(message):
 
 
 def publish_and_confirm(node, publisher, message, observations, timeout,
-                        spin_once, clock=time.monotonic):
+                        spin_once, clock=time.monotonic, request_update=None):
     """Wait for a subscriber, publish ONCE, then require a fresh AMCL reply.
 
     A reply acknowledges processing; it does not establish pose correctness.
@@ -76,6 +76,8 @@ def publish_and_confirm(node, publisher, message, observations, timeout,
                         all(math.isfinite(covariance[i]) and covariance[i] >= 0
                             for i in (0, 7, 35))):
                     return reply
+        if request_update is not None:
+            request_update()
     raise RuntimeError(f'No fresh AMCL reply after {INITIAL_POSE_TOPIC}; initialization unconfirmed')
 
 
@@ -98,6 +100,8 @@ def main():
     import rclpy
     from geometry_msgs.msg import PoseWithCovarianceStamped
     from rclpy.node import Node
+    from std_srvs.srv import Empty
+    from stationary_localization_probe import RefreshSchedule
 
     rclpy.init(args=[])
     node = Node('scan_seed_amcl_initializer')
@@ -106,6 +110,8 @@ def main():
         node.create_subscription(PoseWithCovarianceStamped, '/amcl_pose',
                                  observations.append, 10)
         publisher = node.create_publisher(PoseWithCovarianceStamped, INITIAL_POSE_TOPIC, 10)
+        client = node.create_client(Empty, '/request_nomotion_update')
+        refresh = RefreshSchedule(period=.30)
         message = PoseWithCovarianceStamped()
         message.header.frame_id = payload['header']['frame_id']
         for key, value in payload['pose']['pose']['position'].items():
@@ -113,13 +119,20 @@ def main():
         for key, value in payload['pose']['pose']['orientation'].items():
             setattr(message.pose.pose.orientation, key, value)
         message.pose.covariance = payload['pose']['covariance']
+        def request_update():
+            refresh.tick(time.monotonic(),client.service_is_ready(),
+                         lambda:client.call_async(Empty.Request()))
+        # A stationary AMCL may publish only one estimate after the seed. If
+        # that reply precedes DDS matching, waiting alone cannot recover. Ask
+        # for measurement updates without republishing the initialization.
         reply = publish_and_confirm(node, publisher, message, observations,
-                                    args.timeout, rclpy.spin_once)
+                                    args.timeout, rclpy.spin_once,request_update=request_update)
         record = {'initial_pose_message': payload,
                   'sent_stamp_s': stamp_s(message),
                   'amcl_reply_stamp_s': stamp_s(reply),
                   'position_std_m': args.position_std_m,
                   'yaw_std_deg': args.yaw_std_deg,
+                  'nomotion_requests_sent': refresh.sent,
                   'status': 'fresh AMCL reply; accuracy not independently verified'}
         args.output.write_text(json.dumps(record, indent=2)+'\n')
         print(f'AMCL seed acknowledged: sigma_xy={args.position_std_m:.3f}m, '

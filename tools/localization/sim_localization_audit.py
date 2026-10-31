@@ -12,6 +12,7 @@ import argparse
 import csv
 import math
 import time
+import sys
 from collections import deque
 from pathlib import Path
 
@@ -20,6 +21,8 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from sim_geometry import rear_axle_pose
 
 
 def stamp(msg):
@@ -79,7 +82,8 @@ class Audit(Node):
             'ekf_x_odom', 'ekf_y_odom', 'ekf_yaw_deg',
             'amcl_cov_xx', 'amcl_cov_xy', 'amcl_cov_x_yaw',
             'amcl_cov_yx', 'amcl_cov_yy', 'amcl_cov_y_yaw',
-            'amcl_cov_yaw_x', 'amcl_cov_yaw_y', 'amcl_cov_yaw_yaw'])
+            'amcl_cov_yaw_x', 'amcl_cov_yaw_y', 'amcl_cov_yaw_yaw',
+            'truth_reference_frame','raw_cog_x_sim','raw_cog_y_sim','raw_cog_yaw_deg'])
         self.output_fp.flush()
         self.create_subscription(Odometry, '/ego_racecar/odom', self.on_truth, 30)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_ekf, 30)
@@ -89,7 +93,8 @@ class Audit(Node):
             'Errors are relative to first pose alignment, not absolute mapping error.')
 
     def on_truth(self, msg):
-        self.truth.append((stamp(msg), pose3(msg.pose.pose)))
+        raw=pose3(msg.pose.pose)
+        self.truth.append((stamp(msg),rear_axle_pose(raw),raw))
 
     def on_ekf(self, msg):
         self.ekf.append((stamp(msg), pose3(msg.pose.pose)))
@@ -152,7 +157,9 @@ class Audit(Node):
             f'{math.degrees(aligned_truth[2]):.6f}',
             *([f'{ekf[1][0]:.9f}', f'{ekf[1][1]:.9f}',
                f'{math.degrees(ekf[1][2]):.6f}'] if ekf is not None else ['nan']*3),
-            *[f'{covariance[i]:.12g}' for i in (0, 1, 5, 6, 7, 11, 30, 31, 35)]])
+            *[f'{covariance[i]:.12g}' for i in (0, 1, 5, 6, 7, 11, 30, 31, 35)],
+            'rear_axle',f'{truth[2][0]:.9f}',f'{truth[2][1]:.9f}',
+            f'{math.degrees(truth[2][2]):.6f}'])
         mono=time.monotonic()
         if mono-self.last_log>2:
             self.output_fp.flush()

@@ -1,5 +1,54 @@
 # UJ F1TENTH — Autonomous Racing Simulation
 
+## Current milestone — mapping, localization and planning (31 October 2026)
+
+Racing is paused for the current milestone. Two recorded simulator runs completed
+exploration, fresh map saving and nominal route planning. AMCL initialization
+passes, but moving localization remains under validation: the latest uploaded
+audit shows approximately 0.44 m RMS relative position drift, not absolute map
+accuracy. This is a development checkpoint, not a completed autonomous release.
+
+From the engineering checkout, run only the demonstrated mapping/planning stages:
+
+```zsh
+zsh scripts/run_full_autonomy.zsh --mapping-only
+# Optional simulator exploration ceiling; speed still adapts to turns/clearance:
+zsh scripts/run_full_autonomy.zsh --mapping-only --explore-speed 1.0
+```
+
+`--mapping-only` exits before AMCL or route-following startup. It reports
+`COMPLETED_MAPPING_AND_PLANNING`; cleanup and ZIP packaging still run. The
+historical full-mission interface remains available, so keep this flag when
+demonstrating the stage-limited workflow.
+
+- [Demo runbook, measured results and remaining work](docs/2026-10-31-supervisor-demo.md)
+- [Complete project log and engineering handoff](docs/F1TENTH_COMPLETE_PROJECT_LOG_2026-10-31.md)
+- [Editable supervisor presentation](docs/presentations/F1TENTH_Project_Progress_2026-10-31.pptx)
+- [Recorded evidence and calculated metrics](docs/evidence/2026-10-31/README.md)
+
+## Historical engineering status — 30 October
+
+**30 October engineering status: full mission remains blocked.** The latest combined run stopped on AMCL confidence recovery after 0.71 m; zero laps completed. All 110 offline tests and real ROS handoff/seed fixtures pass. See the [current test handoff](docs/2026-10-30-simulation-handoff.md) for exact revisions, failures and the run command.
+
+
+## Automatic mission - experimental, 29 October 2026
+
+Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
+automatic exploration, fresh mapping, route preparation, AMCL startup and three
+estimated-pose laps. The shared laser mounting is corrected to the measured
+0.100 m from Gym’s CoG; the rear-axle fusion frame uses the composed 0.27145 m
+laser offset. A separate command watchdog owns `/drive`. This integrated workflow
+completed exploration, fresh mapping and route preparation in the first laptop
+run. The SLAM-to-AMCL handoff now uses bounded fresh ROS graph checks to avoid
+stale CLI node listings. A complete live ROS/Gym race remains unverified.
+The second laptop run initialized AMCL and drove, then exposed a stricter pause
+recovery bound than its normal driving bound. Recovery now uses four fresh,
+stationary observations. Later full tests led to route-relative confidence,
+uncertainty-based speed reduction and commanded-motion local swept checks. A separate full
+ROS/Gym CI workflow exercises the entire mission and retains each attempt.
+See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
+review branch, run command, stopping behavior, evidence and remaining limits.
+
 <!-- 2026-10-28-STATUS-UPDATE -->
 ## Project status - 28 October 2026
 
@@ -12,7 +61,7 @@ An EKF + Nav2 AMCL estimated-pose controller completed one low-speed lap on the 
 
 This repository is the simulation workspace for a 1/10-scale autonomous race car. Our long-term goal is to explore an initially unknown circuit, generate and save a map, derive a safe driving trajectory, estimate the vehicle's pose using onboard sensors, and race with robust safety monitoring. Physical hardware is developed separately in [EngZaq/f1tenth_uj](https://github.com/EngZaq/f1tenth_uj).
 
-> **Current status:** Automated exploration, saved SLAM mapping, map-derived centerline/trajectory generation, simulator-assisted registration, speed profiling, and repeated Pure Pursuit laps have been demonstrated. **Localization from independent LiDAR data is NOT yet validated for driving.** Racing presently uses *simulator ground-truth pose* (`/ego_racecar/odom`).
+> **Historical status (27 October):** Automated exploration, saved SLAM mapping, map-derived centerline/trajectory generation, simulator-assisted registration, speed profiling, and repeated Pure Pursuit laps have been demonstrated. **Localization from independent LiDAR data is NOT yet validated for driving.** Racing presently uses *simulator ground-truth pose* (`/ego_racecar/odom`).
 
 ## Historical results at a glance (through 27 October)
 

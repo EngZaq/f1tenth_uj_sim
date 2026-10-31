@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression tests for transient AMCL covariance handling and hard stops."""
 import math
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -10,6 +11,38 @@ from confidence_policy import ConfidenceGate
 
 
 class ConfidenceTest(unittest.TestCase):
+    def test_recorded_pause_recovers_inside_same_driving_gate(self):
+        # Replay measured covariance and distinct pose stamps from the uploaded
+        # run. Zero EKF speed is an explicit fixture assumption, not a new sensor.
+        fixture=json.loads((Path(__file__).parent/'fixtures/confidence_pause_20261029.json').read_text())
+        g=ConfidenceGate()
+        def check(row,speed):
+            return g.check(row['elapsed_s'],row['pose_stamp_s'],
+                           row['position_std_m'],row['yaw_std_rad'],speed)[0]
+        self.assertEqual(check(fixture['trigger'],.4),'PAUSE')
+        states=[check(row,0.) for row in fixture['stationary_observations']]
+        self.assertEqual(states[:3],['PAUSE']*3)
+        self.assertEqual(states[3],'GO')
+        self.assertNotIn('FAULT',states)
+
+    def test_moving_or_above_entry_limit_samples_reset_recovery(self):
+        g=ConfidenceGate();g.check(0.,100.,.081,.05,.4)
+        for j in range(1,4):
+            g.check(j*.1,100.+j*.1,.07,.05,0.)
+        self.assertEqual(g.good_count,3)
+        self.assertEqual(g.check(.4,100.4,.07,.05,.2)[0],'PAUSE')
+        self.assertEqual(g.good_count,0)
+        g.check(.5,100.5,.07,.05,0.)
+        g.check(.6,100.6,.081,.05,0.)
+        self.assertEqual(g.good_count,0)
+
+    def test_out_of_order_estimate_cannot_count_as_recovery(self):
+        g=ConfidenceGate();g.check(0.,100.,.081,.05,.4)
+        for j in range(1,4):g.check(j*.1,100.+j*.1,.07,.05,0.)
+        self.assertEqual(g.good_count,3)
+        self.assertEqual(g.check(.4,100.1,.07,.05,0.)[0],'PAUSE')
+        self.assertEqual(g.good_count,0)
+
     def test_normal_confidence_drives(self):
         g = ConfidenceGate()
         self.assertEqual(g.check(10.0, 100.0, .04, math.radians(3), .4)[0], 'GO')

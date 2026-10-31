@@ -86,6 +86,20 @@ class SeedTest(unittest.TestCase):
                                      lambda *a, **k: None, lambda: next(ticks))
         self.assertEqual(len(sent), 1)
 
+    def test_missing_first_reply_requests_update_without_reseeding(self):
+        sent,replies,updates=[],[],[]
+        pub=NS(get_subscription_count=lambda:1,publish=sent.append)
+        node=NS(get_clock=lambda:NS(now=lambda:NS(to_msg=lambda:NS(sec=100,nanosec=0))))
+        ticks=iter([i*.1 for i in range(100)])
+        def request():
+            updates.append(True)
+            replies.append(message(102))
+        reply=INIT.publish_and_confirm(node,pub,message(),replies,2.,
+            lambda *a,**k:None,lambda:next(ticks),request_update=request)
+        self.assertEqual(len(sent),1)
+        self.assertEqual(len(updates),1)
+        self.assertEqual(INIT.stamp_s(reply),102)
+
 
 class ObserverRoutingTest(unittest.TestCase):
     def test_seed_topic_is_isolated_from_gym_reset(self):
@@ -110,7 +124,7 @@ class ObserverRoutingTest(unittest.TestCase):
         self.assertIn(('initialpose', INIT.INITIAL_POSE_TOPIC), amcl.remappings)
         self.assertNotEqual(INIT.INITIAL_POSE_TOPIC, '/initialpose')
 
-    def exercise(self, fail_initialization=False):
+    def exercise(self, fail_initialization=False, autonomous=False, fail_readiness=False):
         module = load('saved_map_launcher_test', 'tools/mission/run_profiled_saved_map.py')
         starts, calls = [], []
         seed = {'x': 1., 'y': 2., 'yaw': 0., 'route_distance_m': .03}
@@ -122,6 +136,8 @@ class ObserverRoutingTest(unittest.TestCase):
                 Path(args[args.index('--output')+1]).write_text(json.dumps(seed))
             if 'initialize_amcl_pose.py' in ' '.join(args) and fail_initialization:
                 raise RuntimeError('injected initialization failure')
+            if 'wait_amcl_ready.py' in ' '.join(args) and fail_readiness:
+                raise RuntimeError('injected readiness failure')
             out = ('Publisher count: 1' if '/ego_racecar/odom' in args
                    else 'Publisher count: 0' if '/drive' in args else '')
             return NS(returncode=0, stdout=out, stderr='')
@@ -129,6 +145,8 @@ class ObserverRoutingTest(unittest.TestCase):
             starts.append(name)
             module.PROCS[name] = (NS(poll=lambda: 0, returncode=0)
                                   if name == 'stationary_probe' else NS(poll=lambda: None))
+            if name=='autonomous_drive':
+                (module.RUN/'autonomous_drive.log').write_text('ESTIMATED LAP 3 COMPLETE\n')
         ticks = iter([i*.1 for i in range(100)])
         with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
             stack.enter_context(patch.object(module, 'RUN', Path(directory)))
@@ -141,19 +159,38 @@ class ObserverRoutingTest(unittest.TestCase):
                  'orientation': {'x': 0., 'y': 0., 'z': 0., 'w': 1.}}))
             stack.enter_context(patch.object(module.time, 'monotonic', lambda: next(ticks)))
             stack.enter_context(patch.object(module.time, 'sleep', lambda _: None))
-            stack.enter_context(patch('builtins.input', lambda _: ''))
-            stack.enter_context(patch('sys.argv', ['launcher', '--localization-only', '--observe-seconds', '.2']))
+            stack.enter_context(patch('builtins.input',
+                (lambda _: self.fail('automatic mode prompted')) if autonomous else (lambda _: '')))
+            argv=['launcher','--localization-only','--observe-seconds','.2']
+            if autonomous:
+                import json,shutil
+                folder=Path(directory)/'fresh_map';folder.mkdir()
+                for source,target in [('new_track.yaml','new_track.yaml'),('new_track.pgm','new_track.pgm'),
+                        ('lap_pose.json','lap_pose.json'),
+                        ('new_track_mission_forward_feasible.csv','new_track_body_optimized.csv')]:
+                    shutil.copy(ROOT/'results/missions/20261028_112407'/source,folder/target)
+                (folder/'laser_geometry.json').write_text(json.dumps(module.LASER))
+                # A fresh mission must not depend on the historical map folder.
+                stack.enter_context(patch.object(module,'RECOVERED',Path(directory)/'absent_old_map'))
+                argv=['launcher','--autonomous','--mission-dir',str(folder),'--laps','3']
+            stack.enter_context(patch('sys.argv',argv))
             stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
-            if fail_initialization:
-                with self.assertRaisesRegex(RuntimeError, 'injected initialization failure'):
+            if fail_initialization or fail_readiness:
+                with self.assertRaisesRegex(RuntimeError, 'injected .* failure'):
                     module.main()
             else:
                 module.main()
                 import yaml
-                params = yaml.safe_load((Path(directory)/'recovered_map_amcl.yaml').read_text())
+                params = yaml.safe_load((module.RUN/'recovered_map_amcl.yaml').read_text())
                 self.assertIs(params['amcl']['ros__parameters']['set_initial_pose'], False)
-        self.assertNotIn('autonomous_drive', starts)
-        self.assertFalse(any('{data: true}' in args for args in calls))
+                if autonomous:
+                    self.assertEqual(json.loads((module.RUN/'race_result.json').read_text())['completed_estimated_laps'],3)
+        if autonomous and not fail_initialization and not fail_readiness:
+            self.assertIn('autonomous_drive',starts)
+            self.assertTrue(any('{data: true}' in args for args in calls))
+        else:
+            self.assertNotIn('autonomous_drive', starts)
+            self.assertFalse(any('{data: true}' in args for args in calls))
         return starts
 
     def test_observer_never_starts_controller_or_arms(self):
@@ -161,6 +198,12 @@ class ObserverRoutingTest(unittest.TestCase):
 
     def test_initialization_failure_aborts_before_controller(self):
         self.exercise(fail_initialization=True)
+
+    def test_automatic_racing_waits_then_arms_without_prompts(self):
+        self.exercise(autonomous=True)
+
+    def test_readiness_failure_cannot_start_or_arm_controller(self):
+        self.exercise(autonomous=True,fail_readiness=True)
 
 
 if __name__ == '__main__':
