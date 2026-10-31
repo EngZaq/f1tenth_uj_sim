@@ -1,0 +1,81 @@
+{
+  "base_commit": "3dd8232aa7a4f5b628337abb3663b04877a9ca40",
+  "checked_at_utc": "2026-10-31T18:33:24.795954+00:00",
+  "offline_test_results": [
+    {
+      "path": "tests/test_racing_policy.py",
+      "returncode": 0,
+      "test_count": 5
+    },
+    {
+      "path": "tests/test_confidence_policy.py",
+      "returncode": 0,
+      "test_count": 8
+    },
+    {
+      "path": "tests/test_pose_uncertainty.py",
+      "returncode": 0,
+      "test_count": 14
+    },
+    {
+      "path": "tests/test_command_swept_collision.py",
+      "returncode": 0,
+      "test_count": 17
+    },
+    {
+      "path": "tests/test_localization_summary.py",
+      "returncode": 0,
+      "test_count": 13
+    },
+    {
+      "path": "tests/test_amcl_initialization.py",
+      "returncode": 0,
+      "test_count": 11
+    },
+    {
+      "path": "tests/test_stationary_probe.py",
+      "returncode": 0,
+      "test_count": 8
+    },
+    {
+      "path": "tests/test_full_autonomy.py",
+      "returncode": 0,
+      "test_count": 21
+    },
+    {
+      "path": "tests/test_ros_graph_handoff.py",
+      "returncode": 0,
+      "test_count": 7
+    },
+    {
+      "path": "tests/test_map_coverage.py",
+      "returncode": 0,
+      "test_count": 5
+    },
+    {
+      "path": "tests/test_sim_localization_audit_node.py",
+      "returncode": 0,
+      "test_count": 2
+    },
+    {
+      "path": "tests/test_trajectory_safety.py",
+      "returncode": 0,
+      "test_count": null
+    },
+    {
+      "path": "tests/test_optimizer_cli.py",
+      "returncode": 0,
+      "test_count": 2
+    }
+  ],
+  "total_offline_tests": 113,
+  "all_offline_passed": true,
+  "changed_python_ast_parse": "passed",
+  "live_ros_gym_run_this_checkpoint": false,
+  "hardware_test_this_checkpoint": false,
+  "limitations": "Recorded mission artifacts are historical. Unit/model checks do not validate moving AMCL accuracy or a completed full mission.",
+  "archive_integrity": "passed",
+  "selected_file_secret_pattern_scan": "no matches for private-key, GitHub-token, AWS-key and credential-URL patterns",
+  "diff_whitespace_check": "passed",
+  "mission_help_mapping_only": "passed"
+}

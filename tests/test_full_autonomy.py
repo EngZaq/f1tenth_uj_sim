@@ -100,6 +100,18 @@ class GeometryTest(unittest.TestCase):
 
 
 class WatchdogTest(unittest.TestCase):
+    def test_explicit_exploration_ceiling_keeps_default_and_collision_guards(self):
+        default=WATCH.DrivePolicy();default.scan_seen=0.
+        default.accept(0.,1.0,0.)
+        self.assertIn('limits',default.fault)
+        faster=WATCH.DrivePolicy(max_speed=1.0);faster.scan_seen=0.
+        faster.accept(0.,1.0,0.)
+        self.assertEqual(faster.output(.1)[:2],(1.0,0.))
+        faster.fault='simulator collision'
+        self.assertEqual(faster.output(.1)[:2],(0.,0.))
+        for cap in (0.,1.01,float('nan')):
+            with self.assertRaises(ValueError):WATCH.DrivePolicy(max_speed=cap)
+
     def test_fresh_command_then_controller_death_commands_zero(self):
         p=WATCH.DrivePolicy();p.scan_seen=0.
         p.accept(0.,.4,.1,.01)
@@ -208,12 +220,26 @@ class SequenceTest(unittest.TestCase):
                 self.assertIn('race_1/log.txt',archive.namelist())
                 self.assertIn('mission_status.json',archive.namelist())
 
-    def execute(self,folder,**kwargs):
+    def execute(self,folder,mapping_only=False,explore_speed=.18,**kwargs):
         ctx=FakeMission(folder,**kwargs)
-        args=NS(autonomous=True,start_simulator=True,laps=3,speed_cap=.4,explore_speed=.18)
+        args=NS(autonomous=True,start_simulator=True,laps=3,speed_cap=.4,
+                explore_speed=explore_speed,mapping_only=mapping_only)
         with patch('builtins.input',side_effect=AssertionError('automatic mode prompted')),contextlib.redirect_stdout(io.StringIO()):
             FULL.run_mission(ctx,args)
         return ctx
+
+    def test_mapping_only_finishes_after_planning_without_arming(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx=self.execute(Path(tmp)/'mission',mapping_only=True,explore_speed=1.0)
+            self.assertEqual([e['stage'] for e in ctx.events],
+                ['PREFLIGHT','EXPLORING','SAVING_MAP','PLANNING','COMPLETED_MAPPING_AND_PLANNING'])
+            self.assertNotIn('race',dict(ctx.started))
+            self.assertNotIn('LOCALIZING_AND_RACING',[e['stage'] for e in ctx.events])
+            watchdog=dict(ctx.started)['watchdog']
+            self.assertEqual(watchdog[watchdog.index('--max-speed')+1],'1.0')
+            self.assertFalse(any('/amcl_drive/enable' in a for a in ctx.called))
+            self.assertEqual(json.loads((ctx.folder/'mission_status.json').read_text())['stage'],
+                             'COMPLETED_MAPPING_AND_PLANNING')
 
     def test_entire_stage_sequence_no_prompts_and_private_drive_handoff(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -267,6 +293,30 @@ class RoutePreparationTest(unittest.TestCase):
                     PLAN.prepare('unused.yaml',fixture,output,report)
             self.assertFalse(output.exists())
             self.assertFalse(json.loads(report.read_text())['accepted'])
+
+
+class ExplorationSpeedTest(unittest.TestCase):
+    def test_clearance_turning_and_requested_speed_are_all_respected(self):
+        # Load the pure policy from the ROS node without requiring a ROS install.
+        import ast
+        source=ast.parse((ROOT/'tools/exploration/exploration_controller.py').read_text())
+        function=next(n for n in source.body if isinstance(n,ast.FunctionDef)
+                      and n.name=='exploration_speed_limit')
+        namespace={'math':math}
+        exec(compile(ast.Module(body=[function],type_ignores=[]),'exploration_speed_limit','exec'),namespace)
+        limit=namespace['exploration_speed_limit']
+        for requested in (.18,.5,1.0):
+            for steering in (0.,.2,-.4):
+                previous=-1.
+                for gap in (.3,.6,.7,1.0,2.0,5.0):
+                    speed=limit(requested,steering,gap,.33,.6)
+                    self.assertGreaterEqual(speed,previous)
+                    self.assertLessEqual(speed,requested)
+                    self.assertLessEqual(.6*speed+speed*speed/(2*.7),max(0.,gap-.6)+1e-12)
+                    self.assertLessEqual(speed*speed*abs(math.tan(steering))/.33,.6+1e-12)
+                    previous=speed
+        for requested in (-.1,1.01,float('nan')):
+            with self.assertRaises(ValueError):limit(requested,0.,3.,.33,.6)
 
 
 if __name__=='__main__':

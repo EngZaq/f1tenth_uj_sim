@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""SIM ONLY: explore -> fresh map -> body-audited route -> estimated-pose laps.
+"""SIM ONLY: explore -> fresh map -> body-audited route; optional estimated-pose laps.
 
 --autonomous removes intermediate prompts; stage and controller guards remain.
+--mapping-only stops after route preparation without starting localization or driving.
 Simulator truth is used only by the sensor emulator and passive evaluation.
 """
 import argparse
@@ -157,7 +158,8 @@ def run_mission(ctx, args):
         ctx.wait(simulator_ready,45)
     (ctx.folder/'laser_geometry.json').write_text(json.dumps(LASER,indent=2)+'\n')
     ctx.start('watchdog',['python3','-u',ROOT/'tools/navigation/drive_watchdog.py',
-                         '--fault-file',ctx.fault_file])
+                         '--fault-file',ctx.fault_file,
+                         '--max-speed',str(max(.8,args.explore_speed))])
     ctx.start('sensor_emulator',['python3','-u',ROOT/'tools/fusion/sim_vesc_imu.py',
                                 '--ros-args','--params-file',ROOT/'config/fusion_sim_sensors_unbiased.yaml'])
     ctx.start('ekf',['ros2','run','robot_localization','ekf_node','--ros-args',
@@ -205,6 +207,11 @@ def run_mission(ctx, args):
     ctx.command(['python3',ROOT/'tools/planning/prepare_vehicle_route.py',
                  prefix.with_suffix('.yaml'),oriented,'--out',ctx.folder/'new_track_body_optimized.csv',
                  '--report',ctx.folder/'route_preparation.json'],timeout=180)
+    if getattr(args, 'mapping_only', False):
+        ctx.check()
+        ctx.enter('COMPLETED_MAPPING_AND_PLANNING',
+                  scope='Exploration, map saving and nominal route geometry only; racing not run')
+        return
     ctx.enter('WAITING_FOR_LOCALIZATION_HANDOFF')
     wait_for_nodes_absent(ctx.command, output=ctx.folder/'mapping_handoff.json', check=ctx.check)
     ctx.enter('LOCALIZING_AND_RACING')
@@ -242,12 +249,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--autonomous',action='store_true')
     parser.add_argument('--start-simulator',action='store_true')
+    parser.add_argument('--mapping-only',action='store_true',
+                        help='Stop after saving the map and preparing the route; no race controller')
     parser.add_argument('--laps',type=int,default=3)
     parser.add_argument('--speed-cap',type=float,default=.40)
     parser.add_argument('--explore-speed',type=float,default=.18)
     args = parser.parse_args()
     if (args.laps<1 or not math.isfinite(args.speed_cap) or not .05<args.speed_cap<=.8 or
-            not math.isfinite(args.explore_speed) or not .05<=args.explore_speed<=.35):
+            not math.isfinite(args.explore_speed) or not .05<=args.explore_speed<=1.0):
         parser.error('Invalid laps or simulation speed bounds')
     ctx = Mission(ROOT/'results/missions'/('autonomous_'+datetime.now().strftime('%Y%m%d_%H%M%S_%f')))
     try:

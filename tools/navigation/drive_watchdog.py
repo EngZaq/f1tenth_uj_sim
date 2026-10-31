@@ -12,7 +12,10 @@ from pathlib import Path
 
 
 class DrivePolicy:
-    def __init__(self, command_timeout=.25, scan_timeout=.45):
+    def __init__(self, command_timeout=.25, scan_timeout=.45, max_speed=.8):
+        if not math.isfinite(max_speed) or not .05 <= max_speed <= 1.0:
+            raise ValueError("Invalid simulation speed limit")
+        self.max_speed = max_speed
         self.command_timeout, self.scan_timeout = command_timeout, scan_timeout
         self.command = (0., 0.)
         self.command_seen = self.scan_seen = None
@@ -21,7 +24,7 @@ class DrivePolicy:
     def accept(self, now, speed, steering, message_age=0.):
         if not all(math.isfinite(v) for v in (speed, steering, message_age)):
             self.fault = 'nonfinite drive command'
-        elif not 0 <= speed <= .8 or abs(steering) > .419:
+        elif not 0 <= speed <= self.max_speed or abs(steering) > .419:
             self.fault = 'drive command exceeds simulation limits'
         elif speed > 0 and not -.05 <= message_age <= self.command_timeout:
             self.command_seen = None
@@ -45,6 +48,7 @@ class DrivePolicy:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fault-file', type=Path, required=True)
+    parser.add_argument("--max-speed",type=float,default=.8)
     args = parser.parse_args()
     import rclpy
     from rclpy.node import Node
@@ -54,7 +58,7 @@ def main():
     from std_msgs.msg import Bool
     rclpy.init(args=[])
     node = Node('simulation_drive_watchdog')
-    policy = DrivePolicy()
+    policy = DrivePolicy(max_speed=args.max_speed)
     if node.count_publishers('/drive'):
         raise RuntimeError('Existing /drive publisher; watchdog refuses ownership')
     pub = node.create_publisher(AckermannDriveStamped, '/drive', 10)
