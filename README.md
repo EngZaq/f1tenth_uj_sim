@@ -1,183 +1,186 @@
-# UJ F1TENTH — Autonomous Racing Simulation
+# UJ F1TENTH — Autonomous Mapping, Localization & Planning Simulator
 
-**30 October engineering status: full mission remains blocked.** The latest combined run stopped on AMCL confidence recovery after 0.71 m; zero laps completed. All 110 offline tests and real ROS handoff/seed fixtures pass. See the [current test handoff](docs/2026-10-30-simulation-handoff.md) for exact revisions, failures and the run command.
+**University of Jordan | Mechatronics graduation project | ROS 2 Humble / Ubuntu 22.04 / F1TENTH Gym**  
+**Last engineering evidence review:** 1 November 2026  
+**Repository:** https://github.com/EngZaq/f1tenth_uj_sim  
+**Physical-car repository:** https://github.com/EngZaq/f1tenth_uj
 
+> **Current verified result:** An unknown-track, **mapping-only** mission explored a technical closed circuit, saved a new SLAM occupancy map, verified the observed corridor's topology, and generated a nominal body-audited trajectory and speed profile. The most accurate independently evaluated mapping baseline uses `do_loop_closing: false` as a **temporary containment measure**. It does **not** prove reliable AMCL autonomous laps, physical vehicle safety, or a correct loop-closure algorithm.
 
-## Automatic mission - experimental, 29 October 2026
+## 1. Start here
 
-Run `zsh scripts/run_full_autonomy.zsh` from the engineering review checkout for
-automatic exploration, fresh mapping, route preparation, AMCL startup and three
-estimated-pose laps. The shared laser mounting is corrected to the measured
-0.100 m from Gym’s CoG; the rear-axle fusion frame uses the composed 0.27145 m
-laser offset. A separate command watchdog owns `/drive`. This integrated workflow
-completed exploration, fresh mapping and route preparation in the first laptop
-run. The SLAM-to-AMCL handoff now uses bounded fresh ROS graph checks to avoid
-stale CLI node listings. A complete live ROS/Gym race remains unverified.
-The second laptop run initialized AMCL and drove, then exposed a stricter pause
-recovery bound than its normal driving bound. Recovery now uses four fresh,
-stationary observations. Later full tests led to route-relative confidence,
-uncertainty-based speed reduction and commanded-motion local swept checks. A separate full
-ROS/Gym CI workflow exercises the entire mission and retains each attempt.
-See the [automatic mission runbook](docs/2026-10-29-autonomous-mission.md) for the
-review branch, run command, stopping behavior, evidence and remaining limits.
+Read [the full engineering history and team handoff](docs/F1TENTH_SIMULATION_MASTER_LOG_2026-11-01.md) for chronological experiments, performance measurements, mission archive IDs, file-by-file guide, map geometry, failure analysis and hardware handoff. Older reports below that document October failures are **historical**, not the current release verdict.
 
-<!-- 2026-10-28-STATUS-UPDATE -->
-## Project status - 28 October 2026
+### Current capability ledger
 
-An EKF + Nav2 AMCL estimated-pose controller completed one low-speed lap on the **previous saved technical map**. The integrated **unknown-track first-lap exploration and SLAM mapping** saved a new 225 x 296 occupancy map. A clearance-first extractor generated a 377-waypoint, 37.67 m centerline; the steering-feasible route is 37.579 m. The restarted **new-map** estimated-pose drive reached waypoint 56/377 and stopped safely on excessive estimated CTE (0.170 m) and then stale AMCL pose; that lap is **not complete**. No physical robot actuation is demonstrated in this simulator repository.
-
-**Complete supervisor documentation:** [F1TENTH Simulator Technical Report (PDF)](docs/F1TENTH_UJ_Simulator_Technical_Report_2026-10-28.pdf) and [editable Markdown](docs/F1TENTH_UJ_Simulator_Technical_Report_2026-10-28.md).
-
-
-**University of Jordan | ROS 2 Humble | F1TENTH Gym | Development status: 27 October 2026**
-
-This repository is the simulation workspace for a 1/10-scale autonomous race car. Our long-term goal is to explore an initially unknown circuit, generate and save a map, derive a safe driving trajectory, estimate the vehicle's pose using onboard sensors, and race with robust safety monitoring. Physical hardware is developed separately in [EngZaq/f1tenth_uj](https://github.com/EngZaq/f1tenth_uj).
-
-> **Historical status (27 October):** Automated exploration, saved SLAM mapping, map-derived centerline/trajectory generation, simulator-assisted registration, speed profiling, and repeated Pure Pursuit laps have been demonstrated. **Localization from independent LiDAR data is NOT yet validated for driving.** Racing presently uses *simulator ground-truth pose* (`/ego_racecar/odom`).
-
-## Historical results at a glance (through 27 October)
-
-| Subsystem | Result | Important limit |
+| Component | Evidence-supported state | Limitation |
 |---|---|---|
-| Unknown-track exploration | Autonomous LiDAR-guided exploration tested | Mapping used simulator odometry |
-| Saved mapping | SLAM `.pgm`, `.yaml`, `.posegraph`, `.data` | Pose graph and dataset belong together |
-| Planning | Extracted centerline, speed profile and registered trajectory | Registration used privileged simulator geometry |
-| Racing | Five consecutive ~26.5 s laps; mean CTE 0.026 m | Controller still reads truth pose |
-| RF2O | Smooth estimated odometry in synchronized test | Mean relative position error 0.285 m |
-| SLAM localization | ~8 Hz corrections obtained | Mean relative error 0.649 m; unstable jumps |
-| EKF (VESC + IMU) | Planned | No Jetson/VESC/IMU integration today |
-| Particle-filter localization | Planned | Not installed in simulation workspace |
+| Unknown-track exploration | Completed on simulator technical loop | Exploratory policy, speeds and recovery are simulator-specific |
+| VESC/IMU-like sensor fusion | Running EKF from synthetic wheel-speed + yaw-rate measurements | The emulator obtains vehicle twist from simulator truth; **not hardware-validated** |
+| SLAM Toolbox mapping | Closed observed corridor and saved 2.5 cm occupancy grid | Loop closing OFF for validated mapping baseline; physical map accuracy untested |
+| Geometry and route planning | Centerline, route optimization, body/steering audit, speed envelope produced | Nominal geometric clearance is not a tracking or collision guarantee |
+| AMCL localization | Integrated and exercised in past simulator tests | Moving global localization and multiple fully estimated-pose laps **not validated** |
+| Pure Pursuit | Five repeated laps in early oracle-pose experiment | **Historical oracle-pose demo**, not proof of estimated-pose autonomy |
+| Mission controller / watchdog | Mapping-only automatic stage transitions; single `/drive` owner and stop guards | Simulator-only; physical independent E-stop must be separately engineered |
 
-Full explanations, configurations, experiments and failure analysis: **[docs/2026-10-27-development-log.md](docs/2026-10-27-development-log.md)**.
+## 2. Verified latest result and why loop closure is temporarily OFF
 
-## Workspace organization
+On **1 November 2026**, two matched simulation runs were checked against the original technical track *offline* (the reference track never entered navigation). The live ROS parameter was checked in each run.
 
-```text
-f1tenth_sim/
-├── README.md
-├── docs/2026-10-27-development-log.md
-├── scripts/
-│   ├── sim_env.zsh              # ROS domain 42, CycloneDDS, venv, workspace
-│   └── run_sim.zsh              # Simulator + Foxglove
-├── maps/                        # Technical circuit + previous map fixtures
-├── config/                      # SLAM mapping configuration
-├── src/f1tenth_control/         # Pure Pursuit racing ROS package
-├── tools/
-│   ├── exploration/             # Exploration and safe baseline
-│   ├── planning/                # Centerline extraction and map registration
-│   ├── localization/            # Scan relay, RF2O, SLAM, monitors (experimental)
-│   └── generate_speed_profile.py
-├── reference/
-│   ├── levine/                  # Existing reference experiments
-│   └── generated/               # Generated SLAM track paths (created locally)
-└── results/
-    ├── mapping/                 # Saved map + serialized SLAM graph (created locally)
-    └── localization/            # Evaluation data (created locally)
-```
+| Run ID | Runtime loop closing | Largest adjacent `slam_map → fusion_odom` translation / yaw step | Final map wall RMSE, after rigid alignment | Outcome |
+|---|---|---|---|---|
+| `autonomous_20261101_164525_862826` | `false` (verified) | 0.0801 m / 0.400° | **0.04687 m** | Mapping + nominal planning complete; preferred evidence baseline |
+| `autonomous_20261101_170420_346072` | `true` (verified) | **1.6085 m / 25.333°** | **0.22545 m** | Mapping + nominal planning complete but geometry degraded; **do not use its map** |
 
-**GitHub synchronization caveat:** As of documentation review, the remote `main` branch did not yet contain all of today's new local tools or map artifacts. Files marked “created locally” must be reviewed, staged and pushed *from the development laptop*. Do not claim that everything in the layout is already on GitHub.
+In the enabled run, a Ceres graph solve occurs concurrently with a large late global correction. Intermediate map accuracy changes dramatically after that event. Disabling the loop-closure path removes that catastrophic correction under the tested conditions. This is **strong subsystem-level causal evidence**, **not identification of the faulty scan-pair/graph edge**. Loop closing must be repaired and tested separately before restoring it. Do **not** randomly relax clearance, AMCL confidence, or collision gates.
 
-## How to run the successful racing baseline
+The provisional offline TF regression detects one-step global corrections over **0.25 m or 5°** at at most 0.1 s sample gaps. A flagged correction requires map review; a large *legitimate* loop closure can also trigger it. Passing this check is **not** a map accuracy certificate.
 
-Use **separate zsh terminals**. Confirm `reference/generated/uj_technical_slam_01_registered.csv` and `reference/generated/uj_technical_slam_01_speed_profile.csv` exist on the local laptop.
+**Current baseline config:** `config/slam_sim.yaml` contains `do_loop_closing: false` and `debug_logging: false`. `tools/mission/mission_slam.launch.py` must **not override** the YAML loop parameter. Always verify with `ros2 param get /slam_toolbox do_loop_closing` during runtime when performing an ablation.
 
-**Terminal 1 — simulator:**
+## 3. Environment and initial setup
 
-```bash
-cd ~/f1tenth_sim
-zsh scripts/run_sim.zsh
-```
+Laptop configuration used for the demonstrated experiments:
 
-**Terminal 2 — racing controller (simulation only):**
+- Ubuntu 22.04, ROS 2 Humble, zsh; F1TENTH Gym + Gym ROS 2 bridge; Python virtual environment and ROS workspace installed in `~/f1tenth_sim`.
+- `ROS_DOMAIN_ID=42`, `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp`.
+- A dedicated repository checkout, e.g. `~/f1tenth_supervisor_demo`, can reuse the built simulation workspace. **It does not replace** the ROS build workspace by itself.
+- Required sources and pinned simulator adaptations are described in `simulation_dependencies.repos`, `patches/simulator/`, `scripts/sim_env.zsh` and `RUN_SIMULATOR.md` (where available locally).
 
-```bash
-cd ~/f1tenth_sim
+```zsh
+# In zsh, from a code checkout:
+cd ~/f1tenth_supervisor_demo
 source scripts/sim_env.zsh
-python3 src/f1tenth_control/f1tenth_control/racing_pure_pursuit.py \
-  --ros-args \
-  -p waypoints_file:="$HOME/f1tenth_sim/reference/generated/uj_technical_slam_01_registered.csv" \
-  -p speed_profile_file:="$HOME/f1tenth_sim/reference/generated/uj_technical_slam_01_speed_profile.csv" \
-  -p results_file:="$HOME/f1tenth_sim/results/racing_replay.csv" \
-  -p use_speed_profile:=true \
-  -p speed_scale:=1.0 \
-  -p lookahead_distance:=0.5
+python3 tools/mission/full_autonomy.py --help
 ```
 
-Only **one node** should publish driving commands to `/drive`. The track starts near `(-5.8, -2.1, 2.17 rad)`. The controller uses simulator ground truth and must **not** be run directly on the physical car. The reported 5.0 m/s target parameter is not the actual commanded speed when the profile and scaling are applied.
+Environment setup fails with a helpful message if `~/f1tenth_sim/.venv`, `~/f1tenth_sim/install/setup.zsh` or the Gym source tree is missing. For a new laptop, first build/install the separate simulator dependencies; do not expect `git clone` alone to provide ROS, the virtual environment or installed Gym.
 
-## Mapping and planning artifacts
+**No competing simulator or controller:** `scripts/run_full_autonomy.zsh` already starts the simulator. Do not simultaneously launch `scripts/run_sim.zsh`, a second autonomy mission, another `/drive` publisher, RF2O odom TF, and EKF TF for the same edge.
 
-- `results/mapping/uj_technical_slam_01.pgm`: occupancy raster.
-- `results/mapping/uj_technical_slam_01.yaml`: raster resolution, origin, image reference.
-- `results/mapping/uj_technical_slam_01.posegraph`: serialized graph (~30 MB).
-- `results/mapping/uj_technical_slam_01.data`: serialized SLAM dataset (~8.4 MB).
-- `reference/generated/uj_technical_slam_01_centerline.csv`: centerline in original SLAM-map coordinates.
-- `reference/generated/uj_technical_slam_01_registered.csv`: trajectory registered to the simulator world frame.
-- `reference/generated/uj_technical_slam_01_speed_profile.csv`: curvature-based planned velocities.
+## 4. Reproduce the demonstrated mapping-only mission
 
-**Critical frame rule:** Simulator `/map` and SLAM `slam_map` are distinct frames. Never feed registered waypoints (simulator frame) to a controller using SLAM-frame pose without an explicit validated transform. The raw map centerline belongs with SLAM-frame localization.
+```zsh
+cd ~/f1tenth_supervisor_demo
+zsh scripts/run_full_autonomy.zsh --mapping-only --explore-speed 0.18
+```
 
-## Localization experiment (diagnostic, not racing-ready)
+This launcher automatically supplies `--autonomous --start-simulator`, and performs the simulator preflight, watchdog, simulated sensors, EKF, scan relay, SLAM, lap watcher and explorer, map saving, nominal route preparation, then stops **before** starting AMCL driving/racing. It creates a new directory such as `results/missions/autonomous_YYYYMMDD_HHMMSS_ffffff` and records a final status `COMPLETED_MAPPING_AND_PLANNING` on success. This is **not** a `COMPLETED_ESTIMATED_LAPS` result.
+
+**Optional ROS bag** (start *before* the mission in another zsh terminal):
+
+```zsh
+cd ~/f1tenth_supervisor_demo
+source scripts/sim_env.zsh
+OUT="$HOME/f1tenth_engineering_evidence/mapping_$(date +%Y%m%d_%H%M%S)"
+ros2 bag record -o "$OUT" \
+  /tf /tf_static /scan /fusion/scan /odometry/filtered \
+  /ego_racecar/odom /mission/slam_map /drive \
+  /ego_racecar/collision
+```
+
+Stop bag recording with Ctrl+C **after** the mission exits. Simulator truth topics are included **only for passive offline measurement**, never for mapping, localization, or controller input.
+
+Check a completed mission:
+
+```zsh
+RUN="$(ls -dt results/missions/autonomous_20* | head -1)"
+cat "$RUN/mission_status.json"
+cat "$RUN/lap_pose.json"
+cat "$RUN/route_preparation.json"
+ls -lh "$RUN"/new_track*
+```
+
+**Do not drive simply because the route audit prints `accepted: true`.** The map might still be distorted, localization untrusted, or commanded tracking infeasible.
+
+## 5. End-to-end data flow and frame ownership
 
 ```text
-/scan --relay--> /estimated/scan ---> RF2O ---> estimated_odom -> estimated_base
-                           \
-                            -> limiter -> /estimated/slam_scan -> SLAM Toolbox
-                                                           |
-                                                   slam_map -> estimated_odom
+F1TENTH Gym (/scan, /ego_racecar/odom truth)
+    |       |                         simulator truth: evaluation only
+    |       +--> SIM-ONLY sim_vesc_imu.py --> /sim/vesc/wheel_odom (forward vx)
+    |                                      +--> /sim/imu/data_raw (yaw rate)
+    |                                      +--> robot_localization EKF
+    |                                               |
+    |                                   fusion_odom -> fusion_base
+    |
+    +--> /fusion/scan (identical LiDAR ranges, corrected frame)
+                    |
+                SLAM Toolbox (mapping mode)
+                    |
+         slam_map -> fusion_odom, /mission/slam_map
+                    |
+             save new_track.yaml + new_track.pgm
+                    |
+             observed-corridor closure gate
+                    |
+           centerline + oriented vehicle trajectory
+                    |
+        body clearance + steering/curvature audit
+                    |
+        new_track_body_optimized.csv + speed profile
 
-/ego_racecar/odom --> comparison monitor ONLY; no truth injected into estimator
+Alternative historical saved-map mode (not current pass claim):
+ saved map + scan + EKF -> AMCL map correction -> estimated-pose controller
+                        -> /mission/drive -> simulator watchdog -> /drive
 ```
 
-Use these commands in **separate terminals** after starting the simulator; in each terminal run `cd ~/f1tenth_sim; source scripts/sim_env.zsh` first:
+Important geometry contract (source: `docs/2026-10-29-autonomous-mission.md`): Gym publishes the vehicle **centre of gravity** as its truth body. The EKF's `fusion_base` represents the **rear axle**, 0.17145 m behind the CoG. The simulated laser is 0.10000 m forward of CoG; accordingly `fusion_base → fusion_laser = +0.27145 m` in this model. The collision body is 0.58 m × 0.31 m and is centred 0.16510 m ahead of rear axle. These are **simulator model conventions**, not measurements of the physical car. Never mix `map` (simulator reference world) with `slam_map` (estimated map) without a validated transform.
+
+**TF ownership:** One node publishes each odometry TF. Mapping publishes `slam_map → fusion_odom`, EKF publishes `fusion_odom → fusion_base`; map-localizing AMCL can also publish `slam_map → fusion_odom`, so **do not run SLAM mapping and AMCL simultaneously**. `tools/navigation/drive_watchdog.py` is the only final `/drive` publisher during the managed mission; exploration/controllers write `/mission/drive`.
+
+## 6. Maps, output files and what belongs in Git
+
+Original simulator map: `maps/uj_technical_loop_v1.yaml` and its PNG, **720 × 480 cells, 0.025 m/cell, origin (-9,-6,0)**. `maps/uj_oval_debug` is a simpler synthetic test circuit. The original simulator map is permitted only for simulation rendering and **offline evaluation**, not as the supposedly unknown map for the explorer/planner.
+
+**Known-good generated map** (1 Nov): `results/missions/autonomous_20261101_164525_862826/`, from a local mission recording. Its origin and raster dimensions are determined by the saved `new_track.yaml`/PGM; they are *not* the original simulator's map frame. Expected contents:
+
+| Path | Meaning |
+|---|---|
+| `mission_status.json`, `lap_pose.json` | Stage outcome, travelled distance, return pose and observed-corridor check |
+| `new_track.yaml`, `new_track.pgm` | Saved occupancy map; keep **together** |
+| `new_track_centerline.csv` | Centerline from the generated map |
+| `new_track_mission_forward.csv` | Centerline oriented from the estimated finishing pose |
+| `new_track_body_optimized.csv` | Candidate body-audited route (not certified for actual tracking) |
+| `new_track_speed_profile.csv` | Planned per-waypoint speed envelope, not measured velocity |
+| `route_preparation.json`, `new_track_preview.png` | Planning acceptance report and visual preview |
+| `commands.jsonl`, `*.log` | Reproducibility evidence; log text may contain workstation paths |
+
+For the preferred no-loop run, estimated lap distance was **34.329 m** over **228.74 s**; EKF return distance **0.848 m**, return heading difference **13.59°**; the observed corridor check used **0.30 m erosion**, while the accepted *planned* route had **0.354 m minimum conservative body clearance** in its nominal map audit. Planned speed envelope in the accepted route was about **0.616–0.800 m/s**; exploration was requested at 0.18 m/s. These are separate quantities.
+
+The large local `results/missions/` history and ROS `*.db3` recordings are **not automatically part of GitHub `main`**. They require an intentional artifact curation/upload; **never run `git add -A`** on the raw results tree. Preserve bags offline. Teammates must receive the matching validated map and route bundle, not just a documentation link.
+
+## 7. Audit and test results
+
+Use the standalone validation tool when available (`tools/validation/mapping_correction_audit.py`, or the distributed `f1tenth_mapping_correction_audit.py`):
 
 ```bash
-python3 tools/localization/sim_scan_relay.py
-python3 tools/localization/scan_rate_limiter.py
-ros2 run rf2o_laser_odometry rf2o_laser_odometry_node --ros-args --params-file tools/localization/rf2o_sim.yaml
-ros2 run slam_toolbox localization_slam_toolbox_node --ros-args --params-file tools/localization/slam_localization_sim.yaml
-python3 tools/localization/compare_sources_synced.py
+python3 tools/validation/mapping_correction_audit.py \
+  /absolute/path/to/mapping_YYYYMMDD_HHMMSS_0.db3
 ```
 
-Run each on its **own terminal**, not sequentially in a single shell. Do not run `command_model_odom.py` alongside RF2O: both would publish the same estimated TF edge. The initial pose in SLAM config assumes the car is at the beginning of the loop; restarting SLAM in the middle of a lap without relocalization invalidates results.
+This performs a **read-only** `/tf` jump regression (no ROS runtime needed). The no-loop recording showed **0 violations**, while the enabled-loop recording showed **1** with the 1.6085 m / 25.333° jump. Historical unit/ROS integration/CI runs were reported as passing **110 offline tests** by 30 October, but a green offline suite did not imply the AMCL driving mission completed; see the dated CI and handoff documents for exact revisions.
 
-The simulator publishes privileged `/map`; SLAM's OccupancyGrid must be on `/localized_map` to avoid Foxglove topic collisions. For simulation visualization keep Foxglove fixed frame `map`; don't combine disconnected map-frame overlays without TF.
+Reference-track wall accuracy is evaluated *offline* by independently rigid-aligning observed SLAM wall boundaries against the simulator reference. It is a geometric diagnostic, **not** a physically surveyed-map guarantee or proof of absolute localization accuracy. Keep the original reference separate from navigation data.
 
-## What we learned
+## 8. Current limitations and next engineering work
 
-1. RF2O's default `init_pose_from_topic` waits on `/base_pose_ground_truth`; explicitly set the YAML parameter to `""` to prevent using truth pose as initialization.
-2. Restricting SLAM scan input to ~8–10 Hz did not eliminate map-localization errors.
-3. SLAM's `minimum_time_interval: 0.5` restricted accepted scans to 2 Hz; switching to `0.08` enabled ~8 Hz `/pose` updates, **but increased update frequency did not solve accuracy**.
-4. Synchronized diagnostics found RF2O moving smoothly but drifting, while SLAM corrections jumped substantially. Neither is acceptable as the sole map pose for autonomous racing at present.
-5. A command-integrated bicycle model is useful as a simulation experiment, **not** a replacement for measured VESC/encoder + IMU odometry.
+1. **Physical readiness**: replace the simulated velocity-derived sensor emulator with real VESC wheel-speed and IMU readings; calibrate wheel diameter, ERPM gain, gyro bias, lever arms and laser extrinsics. Never feed `/ego_racecar/odom` into physical estimators.
+2. **Localization**: repeat AMCL or an alternative on the validated no-loop map, with independent truth-relative motion audit, stationary and moving tests, reliable initial-pose handoff, and route-relative uncertainty metrics.
+3. **Loop closure**: isolate the candidate constraint and covariance, verify graph consistency, then restore loop closing *only after* correcting the cause and passing repeated maps including a holdout track.
+4. **Safety**: physical independent E-stop, command arbitration, timeout and steering calibration must be commissioned before hardware autonomous operation. Simulator watchdog is **not** a hardware safety case.
+5. **Release evidence**: keep exact source commit, runtime parameters, track image/YAML, saved map/route bundle, ROS bag, mission logs and validation output together for each accepted map.
 
-## Recommended final architecture
+**Teammate ownership:** Moatasem — EKF/sensor fusion and real sensor characterization; Ahmad — mapping-to-route planning, footprint/steering audits; integration lead — TF ownership, launch coordination, safe handoff and validation. Verify actual assignments with the team.
 
-```text
-VESC motor telemetry -> calibrated forward wheel speed ---+
-                                                        +-> EKF -> odom -> base_link
-IMU gyro/acceleration (+ bias calibration) --------------+
-                                                         |
-LiDAR + saved map + EKF odometry -> particle-filter map localization
-                                      |
-                              map -> odom correction
-                                      |
-                 validated map-frame trajectory + Pure Pursuit
-                                      |
-                           independent collision/stop layer
-```
+## 9. Historical reports and technical references
 
-This is a target design, **not an implemented subsystem**. ERPM must be converted with motor pole-pair count, transmission ratio and wheel circumference and calibrated. Servo commands are not measured steering angles. Local odometry and map correction must have distinct TF ownership. Global localization can still produce incorrect matches, so add jump limits, covariance/confidence checks and a stop watchdog.
+- [Master engineering log — through 1 Nov 2026](docs/F1TENTH_SIMULATION_MASTER_LOG_2026-11-01.md)
+- [29 October automatic mission, frames and controller design](docs/2026-10-29-autonomous-mission.md)
+- [30 October stopped full-mission/CI review](docs/2026-10-30-simulation-handoff.md)
+- [27 October early development and oracle Pure Pursuit laps](docs/2026-10-27-development-log.md)
+- [29 October recorded AMCL findings](docs/2026-10-29-recorded-localization-findings.md)
+- [29 October AMCL confidence investigation](docs/2026-10-29-amcl-confidence-root-cause.md)
+- [28 October detailed technical report](docs/F1TENTH_UJ_Simulator_Technical_Report_2026-10-28.md)
 
-## Near-term team ownership
-
-- **Sensor fusion:** Moatasem — produce realistic simulated VESC-like speed and IMU measurements with noise/bias, integrate `robot_localization` EKF, report synchronized metrics with at least three seeds.
-- **Planning:** Ahmad — retain map-derived centerline and clearance/speed validation; remove dependence on privileged map registration from the production algorithm.
-- **Localization integration:** evaluate a particle filter on the saved occupancy map with fused odometry; measure absolute/relative pose errors and relocalization stability.
-- **Controller/safety:** keep working oracle-pose baseline unchanged; add estimated-pose driving only after localization passes repeatable tests.
-
-## Repository hygiene
-
-Retain reproducible source, configuration, mapped track, all four saved map files, validated path/speed CSVs and a curated metrics set. Ignore generated ROS `build/`, `install/`, `log/`, `.venv/`, Python caches and editor temp files. Do not blindly delete source files or untracked results: first inspect `git status --short`, copy important data to backup, and verify each cleanup item. `config/slam_sim.yaml.bak` is an example of an obsolete backup candidate if the live YAML file is intact.
-
-See [the detailed log](docs/2026-10-27-development-log.md) for exact metrics and known limitations.
+**Evidence policy:** Distinguish simulator truth, estimated odometry, mapping, accepted route geometry, measured lap completion and physical validation. No one of those proves all the others.
