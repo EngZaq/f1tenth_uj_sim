@@ -88,7 +88,7 @@ class ProfiledAMCLDrive(Node):
         self.yaw_std_limit = math.radians(float(p('max_heading_std_deg')))
         self.confidence = ConfidenceGate(soft_pos=self.across_std_limit,
             soft_along=self.along_std_limit,hard_pos=self.major_std_limit,
-            soft_yaw_deg=float(p('max_heading_std_deg')))
+            soft_yaw_deg=float(p('max_heading_std_deg')), timeout=10.0)
         self.jump_limit = float(p('max_amcl_jump_m'))
         self.margin = float(p('swept_margin_m'))
         self.aim_base = float(p('lookahead_base_m'))
