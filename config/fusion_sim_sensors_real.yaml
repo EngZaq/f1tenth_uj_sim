@@ -1,0 +1,23 @@
+# PLACEHOLDERS — replace with measured values.
+# Simulated VESC + IMU with "realistic" noise for the three-sensor EKF
+# (tools/fusion/fusion_three_sensors.launch.py default). Same keys as
+# fusion_sim_sensors.yaml plus the two reported_* covariances.
+sim_vesc_imu:
+  ros__parameters:
+    seed: 42
+    # Simulated calibration, NOT necessarily the physical car's wheel diameter.
+    wheel_diameter_m: 0.1016
+    gear_ratio: 4.092
+    motor_pole_pairs: 7.0
+    vesc_hz: 50.0
+    imu_hz: 100.0
+
+    # ---- injected noise (what the fake sensors actually do) — PLACEHOLDERS ----
+    vesc_speed_scale: 1.02         # 2 % wheel-speed scale error
+    vesc_erpm_noise_std: 162.0     # = 0.03 m/s x 5384 ERPM per m/s
+    gyro_bias_rad_s: 0.002
+    gyro_noise_std_rad_s: 0.003
+
+    # ---- reported R (covariance written into the messages -> EKF R) — PLACEHOLDERS ----
+    reported_vx_variance: 0.0025   # (m/s)^2   -> /sim/vesc/wheel_odom twist.covariance[0]
+    reported_gyro_variance: 2.5e-5 # (rad/s)^2 -> /sim/imu/data_raw angular_velocity_covariance[8]

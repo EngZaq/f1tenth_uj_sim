@@ -31,6 +31,11 @@ class SimVescImu(Node):
         self.declare_parameter('vesc_erpm_noise_std', 35.0)
         self.declare_parameter('gyro_bias_rad_s', 0.001)
         self.declare_parameter('gyro_noise_std_rad_s', 0.01)
+        # Covariance written INTO the messages (= EKF measurement noise R).
+        # -1.0 (default) keeps the original behaviour: max(sigma^2, floor).
+        # > 0 writes this value verbatim, decoupling reported R from injected noise.
+        self.declare_parameter('reported_vx_variance', -1.0)     # (m/s)^2
+        self.declare_parameter('reported_gyro_variance', -1.0)   # (rad/s)^2
 
         param = lambda key: self.get_parameter(key).value
         diameter = float(param('wheel_diameter_m'))
@@ -50,6 +55,13 @@ class SimVescImu(Node):
         self.gyro_sigma = float(param('gyro_noise_std_rad_s'))
         self.rng = random.Random(int(param('seed')))
 
+        reported_vx = float(param('reported_vx_variance'))
+        reported_gyro = float(param('reported_gyro_variance'))
+        self.vx_variance = (reported_vx if reported_vx > 0.0 else
+                            max((self.erpm_sigma / self.erpm_per_mps) ** 2, 0.02 ** 2))
+        self.gyro_variance = (reported_gyro if reported_gyro > 0.0 else
+                              max(self.gyro_sigma ** 2, 1e-4))
+
         self.last_vesc_ns = None
         self.last_imu_ns = None
         self.erpm_pub = self.create_publisher(Float64, '/sim/vesc/erpm', 10)
@@ -60,6 +72,9 @@ class SimVescImu(Node):
         self.get_logger().info(
             f'Simulation VESC+IMU: 1 m/s={self.erpm_per_mps:.1f} ERPM; '
             'only velocities are emitted, no ground-truth pose')
+        self.get_logger().info(
+            f'Reported R: vx variance={self.vx_variance:g} (m/s)^2, '
+            f'gyro variance={self.gyro_variance:g} (rad/s)^2')
 
     def on_truth(self, truth):
         stamp = truth.header.stamp
@@ -91,8 +106,7 @@ class SimVescImu(Node):
             for i in (0, 7, 14, 21, 28, 35):
                 wheel.pose.covariance[i] = 1e6  # Pose unavailable / unused by EKF
             wheel.twist.twist.linear.x = measured_erpm / self.erpm_per_mps
-            wheel.twist.covariance[0] = max(
-                (self.erpm_sigma / self.erpm_per_mps) ** 2, 0.02 ** 2)
+            wheel.twist.covariance[0] = self.vx_variance
             wheel.twist.covariance[7] = 1.0  # Other channels not fused
             wheel.twist.covariance[35] = 1.0
             self.wheel_pub.publish(wheel)
@@ -108,7 +122,7 @@ class SimVescImu(Node):
             imu.angular_velocity.z = wz + self.gyro_bias + self.rng.gauss(0, self.gyro_sigma)
             imu.angular_velocity_covariance[0] = 1.0
             imu.angular_velocity_covariance[4] = 1.0
-            imu.angular_velocity_covariance[8] = max(self.gyro_sigma ** 2, 1e-4)
+            imu.angular_velocity_covariance[8] = self.gyro_variance
             self.imu_pub.publish(imu)
 
 

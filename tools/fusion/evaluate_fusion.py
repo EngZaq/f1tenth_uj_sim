@@ -11,6 +11,7 @@ from collections import deque
 from pathlib import Path
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 
@@ -48,7 +49,10 @@ class FusionEvaluator(Node):
         self.yaw_errors = []
         self.last_stamp = None
         self.start_stamp = None
-        self.out = Path.home() / 'f1tenth_sim/results/fusion/fusion_evaluation.csv'
+        self.declare_parameter(
+            'output_csv',
+            str(Path.home() / 'f1tenth_sim/results/fusion/fusion_evaluation.csv'))
+        self.out = Path(self.get_parameter('output_csv').value).expanduser()
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.fp = self.out.open('w', newline='')
         self.csv = csv.writer(self.fp)
@@ -136,7 +140,7 @@ def main():
     node = FusionEvaluator()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.summary()
