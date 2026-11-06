@@ -1,0 +1,11 @@
+# rf2o in the simulation, as an EKF input (NOT a TF publisher).
+# The key must match the node name given in fusion_three_sensors.launch.py.
+rf2o_laser_odometry:
+  ros__parameters:
+    laser_scan_topic: /fusion/scan     # from fusion_scan_relay.py (10 Hz, frame fusion_laser)
+    odom_topic: /fusion/rf2o/odom      # raw rf2o output, no covariance -> cov_relay
+    base_frame_id: fusion_base
+    odom_frame_id: fusion_odom
+    publish_tf: false                  # the EKF owns fusion_odom -> fusion_base
+    init_pose_from_topic: ""           # default would wait for a ground-truth topic
+    freq: 10.0                         # match the relay's 10 Hz scan rate

@@ -1,0 +1,12 @@
+# R for rf2o (simulation). Starting guesses — replace with measured values:
+#   R = (k * sigma)^2, k = 1.5-2, sigma from comparing rf2o with the other sensors.
+# rf2o shares scans with SLAM, so keep it less trusted than VESC / gyro.
+cov_relay:
+  ros__parameters:
+    input_topic: /fusion/rf2o/odom
+    output_topic: /fusion/rf2o/odom_cov
+    var_vx: 0.01        # sigma 0.1 m/s
+    var_vyaw: 0.0025    # sigma 0.05 rad/s
+    var_vy: 1.0         # not fused
+    var_unused: 1.0
+    pose_var: 1000000.0

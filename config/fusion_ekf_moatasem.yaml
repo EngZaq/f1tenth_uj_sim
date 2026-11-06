@@ -1,19 +1,35 @@
+# EKF config — three sensors: VESC (vx) + IMU gyro (vyaw) + rf2o (vx, vyaw)
+# Simulation version (frames fusion_*). Branch: moatasem/ekf-experiments
+#
+# State order for every *_config vector (15 values):
+#   x  y  z | roll pitch yaw | vx vy vz | vroll vpitch vyaw | ax ay az
+#
+# Where each Kalman matrix comes from:
+#   H  -> the *_config vectors below
+#   R  -> the covariance INSIDE each sensor message
+#         (VESC + IMU: sim_vesc_imu.py, rf2o: cov_relay.py / config/cov_relay_rf2o.yaml)
+#   Q  -> process_noise_covariance below (template defaults, a RATE: P += Q*dt)
+#   P0 -> initial_estimate_covariance: not set -> template default 1e-9 (car starts still)
+
 ekf_filter_node:
   ros__parameters:
+    # ---------------- basics ----------------
     frequency: 30.0
-    sensor_timeout: 0.2
-    two_d_mode: true
-    publish_tf: true
+    sensor_timeout: 0.2          # predict-only if no data for this long
+    two_d_mode: true             # flat floor: z, roll, pitch forced to 0
+    publish_tf: true             # EKF is the ONLY owner of fusion_odom -> fusion_base
     publish_acceleration: false
-    print_diagnostics: true
+    print_diagnostics: true      # shows rejected measurements, missing TFs, etc.
+
     map_frame: fusion_map
     odom_frame: fusion_odom
-    base_link_frame: fusion_base  # rear axle, matching the kinematic velocity model
-    world_frame: fusion_odom
+    base_link_frame: fusion_base # rear axle
+    world_frame: fusion_odom     # local EKF; slam_map -> fusion_odom belongs to SLAM
+
     transform_time_offset: 0.0
     transform_timeout: 0.0
 
-    # Fuse wheel-based forward velocity ONLY (no pose, no pseudo yaw).
+    # ---------------- sensor 1: VESC wheel speed -> vx ----------------
     odom0: /sim/vesc/wheel_odom
     odom0_config: [false, false, false,
                    false, false, false,
@@ -23,8 +39,9 @@ ekf_filter_node:
     odom0_differential: false
     odom0_relative: false
     odom0_queue_size: 10
+    odom0_twist_rejection_threshold: 3.0     # gate: reject if > 3 sigma
 
-    # Fuse IMU yaw rate ONLY (no invented orientation or acceleration).
+    # ---------------- sensor 2: IMU gyro -> vyaw ----------------
     imu0: /sim/imu/data_raw
     imu0_config: [false, false, false,
                   false, false, false,
@@ -35,3 +52,40 @@ ekf_filter_node:
     imu0_relative: false
     imu0_queue_size: 20
     imu0_remove_gravitational_acceleration: false
+    imu0_twist_rejection_threshold: 3.0      # gate (angular velocity part)
+
+    # ---------------- sensor 3: rf2o (via cov_relay) -> vx, vyaw ----------------
+    odom1: /fusion/rf2o/odom_cov
+    odom1_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 10
+    odom1_twist_rejection_threshold: 3.0     # gate: catches rf2o jumps
+
+    # ---------------- Q: process noise (template defaults) ----------------
+    # Diagonal: x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az
+    #           0.05 0.05 0.06 0.03 0.03 0.06 | 0.025 0.025 0.04 | 0.01 0.01 0.02 | 0.01 0.01 0.015
+    # Tune ONLY vx (index 6) and vyaw (index 11) after R is fixed.
+    process_noise_covariance: [0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025, 0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.025, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.04, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.01, 0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.02, 0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.015]
+
+    # ---------------- P0 ----------------
+    # initial_estimate_covariance not set -> template default 1e-9 on every state.
+    # OK because the odom frame starts at the car and the car starts still.
