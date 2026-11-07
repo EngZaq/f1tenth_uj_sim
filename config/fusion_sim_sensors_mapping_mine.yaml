@@ -1,0 +1,23 @@
+# Mapping comparison (Test 2): sensor emulator with the CALIBRATED injected noise, Moatasem's measured R.
+# Injected noise/bias/scale are IDENTICAL in fusion_sim_sensors_mapping_team.yaml and
+# fusion_sim_sensors_mapping_mine.yaml (copied from fusion_sim_sensors_calibrated.yaml);
+# only the reported variances (EKF R) differ. Use with:
+#   tools/mission/full_autonomy.py --sensor-config config/fusion_sim_sensors_mapping_mine.yaml
+sim_vesc_imu:
+  ros__parameters:
+    seed: 42
+    wheel_diameter_m: 0.1016
+    gear_ratio: 4.092
+    motor_pole_pairs: 7.0
+    vesc_hz: 50.0
+    imu_hz: 100.0
+
+    # ---- injected errors (identical in both mapping files) ----
+    vesc_speed_scale: 1.003
+    vesc_erpm_noise_std: 162.0     # = 0.03 m/s
+    gyro_bias_rad_s: 0.0003
+    gyro_noise_std_rad_s: 0.003
+
+    # ---- reported R (covariance written into the messages -> EKF R) ----
+    reported_vx_variance: 0.0009   # (m/s)^2   measured = injected (0.03 m/s)^2 (as in fusion_sim_sensors_calibrated.yaml)
+    reported_gyro_variance: 2.5e-5 # (rad/s)^2 measured (as in fusion_sim_sensors_calibrated.yaml)
