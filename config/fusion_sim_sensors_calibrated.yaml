@@ -1,0 +1,23 @@
+# Assumed post-calibration residuals - replace with measured values.
+# The simulated car AFTER calibration: same as fusion_sim_sensors_real.yaml, but the
+# wheel-speed scale error and gyro bias are reduced to what calibration would leave.
+# Same noise and same reported R as fusion_sim_sensors_real.yaml.
+sim_vesc_imu:
+  ros__parameters:
+    seed: 42
+    # Simulated calibration, NOT necessarily the physical car's wheel diameter.
+    wheel_diameter_m: 0.1016
+    gear_ratio: 4.092
+    motor_pole_pairs: 7.0
+    vesc_hz: 50.0
+    imu_hz: 100.0
+
+    # ---- injected errors (what the fake sensors actually do) ----
+    vesc_speed_scale: 1.003        # residual wheel-speed scale error after calibration (was 1.02)
+    vesc_erpm_noise_std: 162.0     # = 0.03 m/s x 5384 ERPM per m/s (unchanged)
+    gyro_bias_rad_s: 0.0003        # residual gyro bias after calibration (was 0.002)
+    gyro_noise_std_rad_s: 0.003    # unchanged
+
+    # ---- reported R (covariance written into the messages -> EKF R), unchanged ----
+    reported_vx_variance: 0.0025   # (m/s)^2   -> /sim/vesc/wheel_odom twist.covariance[0]
+    reported_gyro_variance: 2.5e-5 # (rad/s)^2 -> /sim/imu/data_raw angular_velocity_covariance[8]
