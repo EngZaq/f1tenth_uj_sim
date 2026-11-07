@@ -29,6 +29,15 @@ ekf_filter_node:
     transform_time_offset: 0.0
     transform_timeout: 0.0
 
+    # ---------------- late measurements ----------------
+    # rf2o arrives 40-250 ms late (stamped with the scan time). With smoothing the
+    # EKF reverts to the saved state at the message's stamp and re-applies everything
+    # after it, instead of applying old data as if it were current.
+    # Lag test (sim, 3 runs each): accuracy neutral (within run-to-run spread),
+    # no CPU cost, 423 reverts for 422 rf2o messages, 0 history errors.
+    smooth_lagged_data: true
+    history_length: 0.5          # s; covers the worst rf2o delay seen (~270 ms)
+
     # ---------------- rejection gates: DISABLED on purpose ----------------
     # No *_twist_rejection_threshold lines -> robot_localization default (no gating).
     # In simulation tests a 3-sigma gate locked out good VESC/gyro data for up to 2 s
