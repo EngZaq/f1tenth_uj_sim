@@ -7,6 +7,8 @@ Optional arguments:
     sensors:=config/fusion_sim_sensors.yaml      (default: config/fusion_sim_sensors_real.yaml)
     ekf:=config/fusion_ekf_moatasem.yaml
     relay:=config/cov_relay_rf2o.yaml
+    rf2o:=config/rf2o_fusion.yaml                (rf2o parameter file)
+    scan_min_period_s:=0.1                       (fusion_scan_relay spacing; 0.0 = every scan)
 
 Starts:  sim_vesc_imu.py -> fake VESC + IMU from truth velocities (the only truth reader)
          fusion_scan_relay.py -> /fusion/scan + TF fusion_base -> fusion_laser
@@ -29,11 +31,15 @@ def generate_launch_description():
     sensors = LaunchConfiguration('sensors')
     ekf = LaunchConfiguration('ekf')
     relay = LaunchConfiguration('relay')
+    rf2o = LaunchConfiguration('rf2o')
+    scan_min_period = LaunchConfiguration('scan_min_period_s')
 
     return LaunchDescription([
         DeclareLaunchArgument('sensors', default_value=str(ROOT / 'config/fusion_sim_sensors_real.yaml')),
         DeclareLaunchArgument('ekf', default_value=str(ROOT / 'config/fusion_ekf_moatasem.yaml')),
         DeclareLaunchArgument('relay', default_value=str(ROOT / 'config/cov_relay_rf2o.yaml')),
+        DeclareLaunchArgument('rf2o', default_value=str(ROOT / 'config/rf2o_fusion.yaml')),
+        DeclareLaunchArgument('scan_min_period_s', default_value='0.1'),
 
         ExecuteProcess(
             name='sim_vesc_imu',
@@ -43,14 +49,15 @@ def generate_launch_description():
 
         ExecuteProcess(
             name='fusion_scan_relay',
-            cmd=['python3', '-u', str(ROOT / 'tools/localization/fusion_scan_relay.py')],
+            cmd=['python3', '-u', str(ROOT / 'tools/localization/fusion_scan_relay.py'),
+                 '--ros-args', '-p', ['min_period_s:=', scan_min_period]],
             output='screen'),
 
         Node(
             package='rf2o_laser_odometry',
             executable='rf2o_laser_odometry_node',
             name='rf2o_laser_odometry',
-            parameters=[str(ROOT / 'config/rf2o_fusion.yaml')],
+            parameters=[rf2o],
             output='screen'),
 
         ExecuteProcess(

@@ -24,6 +24,10 @@ class Relay(Node):
     def __init__(self):
         super().__init__('fusion_scan_relay')
         self.last = 0.0
+        # Minimum wall-clock spacing between relayed scans. 0.1 (default) = original
+        # behaviour (~10 Hz, rf2o input); 0.0 relays every /scan message.
+        self.declare_parameter('min_period_s', 0.1)
+        self.min_period = float(self.get_parameter('min_period_s').value)
         self.pub = self.create_publisher(LaserScan, '/fusion/scan', qos_profile_sensor_data)
         self.sub = self.create_subscription(LaserScan, '/scan', self.on_scan, qos_profile_sensor_data)
         self.tf_pub = StaticTransformBroadcaster(self)
@@ -53,7 +57,7 @@ class Relay(Node):
             self.verified = True
             self.get_logger().info('LASER GEOMETRY VERIFIED; /fusion/scan enabled')
         now = time.monotonic()
-        if now - self.last < 0.1:
+        if now - self.last < self.min_period:
             return
         self.last = now
         scan = copy.copy(msg)
