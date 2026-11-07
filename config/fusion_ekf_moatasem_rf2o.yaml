@@ -1,0 +1,117 @@
+# EKF config (OPTION) — three sensors: VESC (vx) + IMU gyro (vyaw) + rf2o (vx, vyaw).
+# = the main config (fusion_ekf_moatasem.yaml) + rf2o with the "C1" settings:
+#   R from config/cov_relay_rf2o.yaml (var_vx 0.01, var_vyaw 0.0025), NO gate.
+# Alternative "C4": config/cov_relay_rf2o_c4.yaml + odom1_twist_rejection_threshold: 3.7.
+# Simulation version (frames fusion_*). Branch: moatasem/ekf-experiments
+#
+# State order for every *_config vector (15 values):
+#   x  y  z | roll pitch yaw | vx vy vz | vroll vpitch vyaw | ax ay az
+#
+# Where each Kalman matrix comes from:
+#   H  -> the *_config vectors below
+#   R  -> the covariance INSIDE each sensor message
+#         (VESC + IMU: sim_vesc_imu.py, rf2o: cov_relay.py / config/cov_relay_rf2o.yaml)
+#   Q  -> process_noise_covariance below (template defaults except vx=0.05; a RATE: P += Q*dt)
+#   P0 -> initial_estimate_covariance: not set -> template default 1e-9 (car starts still)
+
+ekf_filter_node:
+  ros__parameters:
+    # ---------------- basics ----------------
+    frequency: 30.0
+    sensor_timeout: 0.2          # predict-only if no data for this long
+    two_d_mode: true             # flat floor: z, roll, pitch forced to 0
+    publish_tf: true             # EKF is the ONLY owner of fusion_odom -> fusion_base
+    publish_acceleration: false
+    print_diagnostics: true      # shows rejected measurements, missing TFs, etc.
+
+    map_frame: fusion_map
+    odom_frame: fusion_odom
+    base_link_frame: fusion_base # rear axle
+    world_frame: fusion_odom     # local EKF; slam_map -> fusion_odom belongs to SLAM
+
+    transform_time_offset: 0.0
+    transform_timeout: 0.0
+
+    # ---------------- late measurements ----------------
+    # rf2o arrives 40-250 ms late (stamped with the scan time). With smoothing the
+    # EKF reverts to the saved state at the message's stamp and re-applies everything
+    # after it, instead of applying old data as if it were current.
+    # Lag test (sim, 3 runs each): accuracy neutral (within run-to-run spread),
+    # no CPU cost, 423 reverts for 422 rf2o messages, 0 history errors.
+    smooth_lagged_data: true
+    history_length: 0.5          # s; covers the worst rf2o delay seen (~270 ms)
+
+    # ---------------- rejection gates: none (rf2o included) ----------------
+    # No *_twist_rejection_threshold lines -> robot_localization default (no gating).
+    # In simulation tests a 3-sigma gate locked out good VESC/gyro data for up to 2 s
+    # after fast transients (small Q -> small S -> long rejection streaks), doubling
+    # the error. Proven F1TENTH stacks (ForzaETH) also run this velocity-only EKF
+    # without gates. Revisit only once R and Q are measured on the real car.
+    # ---------------- sensor 1: VESC wheel speed -> vx ----------------
+    odom0: /sim/vesc/wheel_odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, false,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # ---------------- sensor 2: IMU gyro -> vyaw ----------------
+    imu0: /sim/imu/data_raw
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 20
+    imu0_remove_gravitational_acceleration: false
+
+    # ---------------- sensor 3: rf2o (via cov_relay) -> vx, vyaw ----------------
+    odom1: /fusion/rf2o/odom_cov
+    odom1_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 10
+    # No gate ("C1"). rf2o R x gate test (sim, 2x2, 5 runs each, regraded at the rear
+    # axle): C1 (old R, no gate) 0.041 +- 0.005 m RMSE - the best and most consistent;
+    # gate effect +0.011 m (p 0.051, worse), R effect +0.003 m (p 0.52). The 3.7-sigma
+    # gate rejected only real rf2o spikes (99 rejections, 0 false) but did not improve
+    # the pose. To use it anyway ("C4"): add  odom1_twist_rejection_threshold: 3.7  here
+    # and run cov_relay with config/cov_relay_rf2o_c4.yaml.
+
+    # ---------------- Q: process noise ----------------
+    # Diagonal: x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az
+    #           0.05 0.05 0.06 0.03 0.03 0.06 | 0.05  0.025 0.04 | 0.01 0.01 0.02 | 0.01 0.01 0.015
+    # Template defaults except vx (index 6) = 0.05. Tune ONLY vx and vyaw (index 11).
+    # Why (NIS check in simulation, gates off, three sensors):
+    #   vx:   Q_vx 0.5 (ForzaETH value) gave VESC mean NIS 0.13 (expected 1): P_vx grew
+    #         0.5*0.02 = 0.01 between VESC samples, ~85 % of S. Q_vx 0.05 together with
+    #         the true VESC R (0.0009) gave mean NIS 0.62; RMSE unchanged.
+    #   vyaw: 0.02 (template) gave IMU mean NIS ~1.0 -> kept.
+    process_noise_covariance: [0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.05,  0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.025, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.04, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.01, 0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.02, 0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.015]
+
+    # ---------------- P0 ----------------
+    # initial_estimate_covariance not set -> template default 1e-9 on every state.
+    # OK because the odom frame starts at the car and the car starts still.

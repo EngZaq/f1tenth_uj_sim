@@ -1,4 +1,5 @@
-# EKF config — three sensors: VESC (vx) + IMU gyro (vyaw) + rf2o (vx, vyaw)
+# EKF config (MAIN) — two sensors: VESC (vx) + IMU gyro (vyaw). = configuration "C".
+# rf2o is an OPTION: config/fusion_ekf_moatasem_rf2o.yaml (+ config/cov_relay_rf2o.yaml).
 # Simulation version (frames fusion_*). Branch: moatasem/ekf-experiments
 #
 # State order for every *_config vector (15 values):
@@ -7,7 +8,7 @@
 # Where each Kalman matrix comes from:
 #   H  -> the *_config vectors below
 #   R  -> the covariance INSIDE each sensor message
-#         (VESC + IMU: sim_vesc_imu.py, rf2o: cov_relay.py / config/cov_relay_rf2o.yaml)
+#         (VESC + IMU: sim_vesc_imu.py on the sim, the real drivers on the car)
 #   Q  -> process_noise_covariance below (template defaults except vx=0.05; a RATE: P += Q*dt)
 #   P0 -> initial_estimate_covariance: not set -> template default 1e-9 (car starts still)
 
@@ -30,22 +31,18 @@ ekf_filter_node:
     transform_timeout: 0.0
 
     # ---------------- late measurements ----------------
-    # rf2o arrives 40-250 ms late (stamped with the scan time). With smoothing the
-    # EKF reverts to the saved state at the message's stamp and re-applies everything
-    # after it, instead of applying old data as if it were current.
-    # Lag test (sim, 3 runs each): accuracy neutral (within run-to-run spread),
-    # no CPU cost, 423 reverts for 422 rf2o messages, 0 history errors.
+    # Kept identical to the rf2o variant so both files behave the same. Without rf2o
+    # nothing arrives late (VESC + IMU are stamped on arrival), so it costs nothing here.
+    # (Lag test with rf2o: accuracy neutral, no CPU cost, 423 reverts for 422 messages.)
     smooth_lagged_data: true
-    history_length: 0.5          # s; covers the worst rf2o delay seen (~270 ms)
+    history_length: 0.5          # s
 
-    # ---------------- rejection gates: VESC + IMU ungated, rf2o gated ----------------
-    # VESC / IMU: no *_twist_rejection_threshold -> robot_localization default (no gating).
+    # ---------------- rejection gates: none ----------------
+    # No *_twist_rejection_threshold lines -> robot_localization default (no gating).
     # In simulation tests a 3-sigma gate locked out good VESC/gyro data for up to 2 s
     # after fast transients (small Q -> small S -> long rejection streaks), doubling
     # the error. Proven F1TENTH stacks (ForzaETH) also run this velocity-only EKF
     # without gates. Revisit only once R and Q are measured on the real car.
-    # rf2o: gated at 3.7 sigma (see odom1 below) - the one sensor with real outliers.
-
     # ---------------- sensor 1: VESC wheel speed -> vx ----------------
     odom0: /sim/vesc/wheel_odom
     odom0_config: [false, false, false,
@@ -69,29 +66,19 @@ ekf_filter_node:
     imu0_queue_size: 20
     imu0_remove_gravitational_acceleration: false
 
-    # ---------------- sensor 3: rf2o (via cov_relay) -> vx, vyaw ----------------
-    odom1: /fusion/rf2o/odom_cov
-    odom1_config: [false, false, false,
-                   false, false, false,
-                   true,  false, false,
-                   false, false, true,
-                   false, false, false]
-    odom1_differential: false
-    odom1_relative: false
-    odom1_queue_size: 10
-    # Mahalanobis gate, rf2o only: 3.7 sigma = 99.9 % for its 2 fused values (vx, vyaw).
-    # rf2o fails in bursts (reads 0.5-0.9 m/s too slow for ~1 s at launch; isolated
-    # 1-3 message drops mid-lap). Sim 2x2 test (5 runs each, with the data-based R in
-    # cov_relay_rf2o.yaml): 0 false rejections out of 66, 88 % of spikes (> 5 robust
-    # std) rejected, longest streak = the launch (~1 s, all true failures; VESC/IMU stay
-    # ungated so the EKF keeps tracking). Accuracy unchanged within run-to-run spread.
-    odom1_twist_rejection_threshold: 3.7
+    # ---------------- rf2o: NOT fused in the main config ----------------
+    # AMCL shadow test (sim, new_track map, 5 runs each, rear-axle grading): AMCL + this
+    # two-sensor EKF ("C") vs AMCL + three-sensor EKF ("B"): position RMSE 0.048 vs 0.045 m,
+    # heading mean 0.87 vs 0.86 deg, largest correction 2.7 vs 2.4 cm - no difference beyond
+    # the run-to-run spread (|t| < 2). rf2o costs ~42 % of a CPU core. Without AMCL it did
+    # help the EKF (~0.02-0.04 m over one lap), so it stays available as an option:
+    # config/fusion_ekf_moatasem_rf2o.yaml.
 
     # ---------------- Q: process noise ----------------
     # Diagonal: x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az
     #           0.05 0.05 0.06 0.03 0.03 0.06 | 0.05  0.025 0.04 | 0.01 0.01 0.02 | 0.01 0.01 0.015
     # Template defaults except vx (index 6) = 0.05. Tune ONLY vx and vyaw (index 11).
-    # Why (NIS check in simulation, gates off, three sensors):
+    # Why (NIS check in simulation, gates off, three sensors; same Q kept for two sensors):
     #   vx:   Q_vx 0.5 (ForzaETH value) gave VESC mean NIS 0.13 (expected 1): P_vx grew
     #         0.5*0.02 = 0.01 between VESC samples, ~85 % of S. Q_vx 0.05 together with
     #         the true VESC R (0.0009) gave mean NIS 0.62; RMSE unchanged.

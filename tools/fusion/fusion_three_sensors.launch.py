@@ -5,8 +5,8 @@ Start the simulator first (simrun), then:
 
 Optional arguments:
     sensors:=config/fusion_sim_sensors.yaml      (default: config/fusion_sim_sensors_real.yaml)
-    ekf:=config/fusion_ekf_moatasem.yaml
-    relay:=config/cov_relay_rf2o.yaml
+    ekf:=config/fusion_ekf_moatasem_rf2o.yaml       (three-sensor option; main EKF is two-sensor)
+    relay:=config/cov_relay_rf2o.yaml            (C1 R; C4 alternative: config/cov_relay_rf2o_c4.yaml)
     rf2o:=config/rf2o_fusion.yaml                (rf2o parameter file)
     scan_min_period_s:=0.1                       (fusion_scan_relay spacing; 0.0 = every scan)
 
@@ -36,7 +36,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('sensors', default_value=str(ROOT / 'config/fusion_sim_sensors_real.yaml')),
-        DeclareLaunchArgument('ekf', default_value=str(ROOT / 'config/fusion_ekf_moatasem.yaml')),
+        DeclareLaunchArgument('ekf', default_value=str(ROOT / 'config/fusion_ekf_moatasem_rf2o.yaml')),
         DeclareLaunchArgument('relay', default_value=str(ROOT / 'config/cov_relay_rf2o.yaml')),
         DeclareLaunchArgument('rf2o', default_value=str(ROOT / 'config/rf2o_fusion.yaml')),
         DeclareLaunchArgument('scan_min_period_s', default_value='0.1'),

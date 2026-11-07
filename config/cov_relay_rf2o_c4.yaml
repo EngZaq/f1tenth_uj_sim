@@ -1,0 +1,18 @@
+# ALTERNATIVE "C4" (not the default): data-based R + the EKF's rf2o gate.
+# Use with  odom1_twist_rejection_threshold: 3.7  added to config/fusion_ekf_moatasem_rf2o.yaml,
+# e.g. ros2 launch tools/fusion/fusion_three_sensors.launch.py relay:=config/cov_relay_rf2o_c4.yaml ekf:=<that yaml>
+# Result (sim, rear-axle grading): 0.055 +- 0.013 m RMSE vs 0.041 +- 0.005 m for C1 (no gate, old R).
+# R for rf2o (simulation), measured: R = (1.5 x robust std)^2, robust std = 1.4826 x MAD
+# of rf2o minus ground truth (matched at the rf2o header stamp), one sim lap, 248 messages.
+# Robust std ignores the spikes on purpose - those are handled by the EKF's rf2o gate
+# (odom1_twist_rejection_threshold, add it to fusion_ekf_moatasem_rf2o.yaml). Use together with that gate.
+# Real car: re-measure with the same method; these values come from simulated scans.
+cov_relay:
+  ros__parameters:
+    input_topic: /fusion/rf2o/odom
+    output_topic: /fusion/rf2o/odom_cov
+    var_vx: 0.00296     # robust std 0.0363 m/s (was 0.01 guess)
+    var_vyaw: 0.00324   # robust std 0.0380 rad/s (was 0.0025 guess)
+    var_vy: 1.0         # not fused
+    var_unused: 1.0
+    pose_var: 1000000.0

@@ -1,14 +1,14 @@
-# R for rf2o (simulation), measured: R = (1.5 x robust std)^2, robust std = 1.4826 x MAD
-# of rf2o minus ground truth (matched at the rf2o header stamp), one sim lap, 248 messages.
-# Robust std ignores the spikes on purpose - those are handled by the EKF's rf2o gate
-# (odom1_twist_rejection_threshold in fusion_ekf_moatasem.yaml). Use together with that gate.
-# Real car: re-measure with the same method; these values come from simulated scans.
+# R for rf2o (simulation) - DEFAULT "C1" settings (use with config/fusion_ekf_moatasem_rf2o.yaml,
+# which has NO rf2o gate). rf2o R x gate test (sim, 2x2, 5 runs each, rear-axle grading):
+# C1 = this R + no gate: 0.041 +- 0.005 m RMSE, best and most consistent of the four.
+# The data-based R + 3.7-sigma gate ("C4") is kept as config/cov_relay_rf2o_c4.yaml.
+# Real car: re-measure R (rf2o minus a reference, R = (k x robust std)^2, k = 1.5-2).
 cov_relay:
   ros__parameters:
     input_topic: /fusion/rf2o/odom
     output_topic: /fusion/rf2o/odom_cov
-    var_vx: 0.00296     # robust std 0.0363 m/s (was 0.01 guess)
-    var_vyaw: 0.00324   # robust std 0.0380 rad/s (was 0.0025 guess)
+    var_vx: 0.01        # sigma 0.1 m/s (best in the 2x2 test; measured robust std was 0.036)
+    var_vyaw: 0.0025    # sigma 0.05 rad/s (measured robust std was 0.038)
     var_vy: 1.0         # not fused
     var_unused: 1.0
     pose_var: 1000000.0

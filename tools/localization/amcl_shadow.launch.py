@@ -3,12 +3,12 @@
 Localization is graded only; the car is still driven by the simulator truth (Pure Pursuit),
 so this launch never publishes /drive. Start the simulator first, then:
 
-    zsh -c 'source scripts/sim_env.zsh && ros2 launch tools/localization/amcl_shadow.launch.py odom_source:=ekf'
+    zsh -c 'source scripts/sim_env.zsh && ros2 launch tools/localization/amcl_shadow.launch.py odom_source:=ekf2'
 
 Arguments:
-    odom_source:=ekf | ekf2 | vesc
+    odom_source:=ekf2 | ekf | vesc   (default ekf2 = main EKF)
                                 ekf  = three-sensor EKF (tools/fusion/fusion_three_sensors.launch.py)
-                                ekf2 = EKF only (no rf2o, no cov_relay): sim VESC+IMU, scan relay and
+                                ekf2 = MAIN EKF (no rf2o, no cov_relay): sim VESC+IMU, scan relay and
                                        ekf_node with the yaml given by ekf:= (must not list odom1)
                                 vesc = raw VESC odometry (tools/localization/sim_vesc_to_odom.py):
                                        measured wheel speed + COMMANDED steering, no EKF/rf2o
@@ -19,7 +19,8 @@ Arguments:
     params:=config/fusion_amcl_moatasem.yaml               (team AMCL parameters, unchanged)
     sensors:=config/fusion_sim_sensors_calibrated.yaml     (sim VESC + IMU, both sources)
     steer_bias_deg:=0.0  steer_noise_deg:=0.0               (vesc only: servo / linkage play)
-    ekf:=config/fusion_ekf_moatasem.yaml                   (EKF parameters for ekf / ekf2)
+    ekf:=config/fusion_ekf_moatasem.yaml                   (EKF parameters for ekf2, two sensors)
+    ekf_rf2o:=config/fusion_ekf_moatasem_rf2o.yaml         (EKF parameters for ekf, three sensors)
 
 TF ownership (exactly one publisher per edge):
     slam_map    -> fusion_odom  : AMCL
@@ -52,7 +53,7 @@ def generate_launch_description():
     own_sensors = IfCondition(PythonExpression(["'", LaunchConfiguration('odom_source'), "' in ('vesc', 'ekf2')"]))
 
     return LaunchDescription([
-        DeclareLaunchArgument('odom_source', default_value='ekf', choices=['ekf', 'ekf2', 'vesc']),
+        DeclareLaunchArgument('odom_source', default_value='ekf2', choices=['ekf', 'ekf2', 'vesc']),
         DeclareLaunchArgument('map_yaml',
                               default_value=str(ROOT / 'results/missions/autonomous_20261103_114924_818822/new_track.yaml')),
         DeclareLaunchArgument('params', default_value=str(ROOT / 'config/fusion_amcl_moatasem.yaml')),
@@ -61,6 +62,7 @@ def generate_launch_description():
         DeclareLaunchArgument('steer_bias_deg', default_value='0.0'),
         DeclareLaunchArgument('steer_noise_deg', default_value='0.0'),
         DeclareLaunchArgument('ekf', default_value=str(ROOT / 'config/fusion_ekf_moatasem.yaml')),
+        DeclareLaunchArgument('ekf_rf2o', default_value=str(ROOT / 'config/fusion_ekf_moatasem_rf2o.yaml')),
 
         # ---------------- localization: map + AMCL ----------------
         Node(package='nav2_map_server', executable='map_server', name='fusion_map_server',
@@ -76,7 +78,7 @@ def generate_launch_description():
         # ---------------- odometry source B: three-sensor EKF ----------------
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(ROOT / 'tools/fusion/fusion_three_sensors.launch.py')),
-            launch_arguments={'sensors': sensors, 'ekf': ekf_yaml}.items(),
+            launch_arguments={'sensors': sensors, 'ekf': LaunchConfiguration('ekf_rf2o')}.items(),
             condition=ekf),
 
         # ---------------- sensors for vesc / ekf2 (ekf gets them from its own launch) ----------------
