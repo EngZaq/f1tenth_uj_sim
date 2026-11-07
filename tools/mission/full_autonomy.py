@@ -137,8 +137,42 @@ class Mission:
         return offset
 
 
+DEFAULT_EKF_CONFIG = 'config/fusion_ekf.yaml'
+DEFAULT_SENSOR_CONFIG = 'config/fusion_sim_sensors_unbiased.yaml'
+RF2O_CONFIG = 'config/rf2o_fusion.yaml'
+RF2O_RELAY_CONFIG = 'config/cov_relay_rf2o.yaml'
+
+
+def config_path(value):
+    path = Path(value)
+    return path if path.is_absolute() else ROOT/path
+
+
+def mapping_configs(args):
+    """EKF/sensor files for this mission (defaults = the team baseline) and rf2o on/off."""
+    ekf = config_path(getattr(args,'ekf_config',None) or DEFAULT_EKF_CONFIG)
+    sensors = config_path(getattr(args,'sensor_config',None) or DEFAULT_SENSOR_CONFIG)
+    rf2o = bool(getattr(args,'with_rf2o',False))
+    return {'ekf_config':ekf,'sensor_config':sensors,'with_rf2o':rf2o,
+            'rf2o_config':config_path(RF2O_CONFIG) if rf2o else None,
+            'rf2o_relay_config':config_path(RF2O_RELAY_CONFIG) if rf2o else None}
+
+
+def check_mapping_configs(cfg):
+    for key in ('ekf_config','sensor_config','rf2o_config','rf2o_relay_config'):
+        if cfg[key] is not None and not cfg[key].is_file():
+            raise RuntimeError(f'{key} not found: {cfg[key]}')
+    has_odom1 = re.search(r'^\s*odom1\s*:',cfg['ekf_config'].read_text(),re.MULTILINE) is not None
+    if cfg['with_rf2o'] and not has_odom1:
+        raise RuntimeError('--with-rf2o needs an EKF config that fuses odom1 (rf2o)')
+    if has_odom1 and not cfg['with_rf2o']:
+        raise RuntimeError('EKF config fuses odom1 (rf2o); start the mission with --with-rf2o')
+
+
 def run_mission(ctx, args):
-    ctx.enter('PREFLIGHT')
+    cfg = mapping_configs(args)
+    check_mapping_configs(cfg)
+    ctx.enter('PREFLIGHT',mapping_configs={k:(str(v) if isinstance(v,Path) else v) for k,v in cfg.items()})
     if not args.autonomous:
         input('Press ENTER to start exploration and the automatic stage sequence: ')
     nodes = ctx.command(node_list_args(),timeout=6).stdout.splitlines()
@@ -160,10 +194,17 @@ def run_mission(ctx, args):
                          '--fault-file',ctx.fault_file,
                          '--max-speed',str(max(.8,args.explore_speed))])
     ctx.start('sensor_emulator',['python3','-u',ROOT/'tools/fusion/sim_vesc_imu.py',
-                                '--ros-args','--params-file',ROOT/'config/fusion_sim_sensors_unbiased.yaml'])
+                                '--ros-args','--params-file',cfg['sensor_config']])
     ctx.start('ekf',['ros2','run','robot_localization','ekf_node','--ros-args',
-                     '--params-file',ROOT/'config/fusion_ekf.yaml'])
+                     '--params-file',cfg['ekf_config']])
     ctx.start('scan_relay',['python3','-u',ROOT/'tools/localization/fusion_scan_relay.py'])
+    if cfg['with_rf2o']:
+        # rf2o on /fusion/scan (publish_tf false) -> cov_relay adds R -> EKF odom1
+        ctx.start('rf2o',['ros2','run','rf2o_laser_odometry','rf2o_laser_odometry_node',
+                          '--ros-args','--params-file',cfg['rf2o_config'],
+                          '-r','__node:=rf2o_laser_odometry'])
+        ctx.start('cov_relay',['python3','-u',ROOT/'tools/fusion/cov_relay.py',
+                               '--ros-args','--params-file',cfg['rf2o_relay_config']])
     ctx.start('slam',['ros2','launch',MISSION/'mission_slam.launch.py'])
     def map_available():
         try:
@@ -193,7 +234,7 @@ def run_mission(ctx, args):
     if not prefix.with_suffix('.yaml').is_file() or not prefix.with_suffix('.pgm').is_file():
         raise RuntimeError('Map saver did not produce YAML and PGM')
     ctx.command(['python3',MISSION/'capture_map_pose.py',lap_file],timeout=25)
-    for name in ('lap_watcher','slam','scan_relay','ekf','sensor_emulator'):
+    for name in ('lap_watcher','slam','cov_relay','rf2o','scan_relay','ekf','sensor_emulator'):
         ctx.stop(name)
     ctx.enter('PLANNING')
     lap = json.loads(lap_file.read_text())
@@ -253,6 +294,13 @@ def main():
     parser.add_argument('--laps',type=int,default=3)
     parser.add_argument('--speed-cap',type=float,default=.40)
     parser.add_argument('--explore-speed',type=float,default=.18)
+    parser.add_argument('--ekf-config',default=DEFAULT_EKF_CONFIG,
+                        help='robot_localization EKF parameter file (default: team baseline)')
+    parser.add_argument('--sensor-config',default=DEFAULT_SENSOR_CONFIG,
+                        help='sim_vesc_imu parameter file (default: team baseline)')
+    parser.add_argument('--with-rf2o',action='store_true',
+                        help=f'Also run rf2o ({RF2O_CONFIG}) + cov_relay ({RF2O_RELAY_CONFIG}) on '
+                             '/fusion/scan; the EKF config must fuse odom1')
     args = parser.parse_args()
     if (args.laps<1 or not math.isfinite(args.speed_cap) or not .05<args.speed_cap<=.8 or
             not math.isfinite(args.explore_speed) or not .05<=args.explore_speed<=1.0):
