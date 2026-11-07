@@ -3,6 +3,16 @@
 
 Evaluation-only truth subscription. Reports relative drift; does NOT create map
 localization, feed truth to EKF, or certify deployment readiness.
+
+Reference point (parameter truth_reference):
+  'rear_axle' (default): simulator truth is moved from the CoG to the rear axle
+      (REAR_TO_COG = 0.17145 m back along the body x axis, tools/sim_geometry.py) before it
+      is compared with the EKF's fusion_base pose, which IS the rear axle.
+  'cog': old behaviour, kept only to reproduce earlier numbers.
+BUG FIXED (Nov 2026): comparing the rear-axle EKF pose with the CoG truth pose added a
+purely geometric error of 2 x 0.17145 x |sin(dheading / 2)| after start alignment - up to
+~0.34 m after a half turn - identical in every run. It dominated earlier position errors
+(e.g. ~0.22 m RMSE graded at the CoG vs ~0.04-0.06 m at the rear axle for the same runs).
 """
 import csv
 import math
@@ -10,10 +20,15 @@ from bisect import bisect_left
 from collections import deque
 from pathlib import Path
 
+import sys
+
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # tools/ -> sim_geometry
+from sim_geometry import rear_axle_pose  # noqa: E402
 
 
 def stamp_ns(m):
@@ -52,6 +67,10 @@ class FusionEvaluator(Node):
         self.declare_parameter(
             'output_csv',
             str(Path.home() / 'f1tenth_sim/results/fusion/fusion_evaluation.csv'))
+        self.declare_parameter('truth_reference', 'rear_axle')     # 'rear_axle' | 'cog' (old)
+        self.truth_reference = str(self.get_parameter('truth_reference').value)
+        if self.truth_reference not in ('rear_axle', 'cog'):
+            raise ValueError("truth_reference must be 'rear_axle' or 'cog'")
         self.out = Path(self.get_parameter('output_csv').value).expanduser()
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.fp = self.out.open('w', newline='')
@@ -61,7 +80,7 @@ class FusionEvaluator(Node):
                            'match_time_error_ms'])
         self.create_subscription(Odometry, '/ego_racecar/odom', self.on_truth, 20)
         self.create_subscription(Odometry, '/odometry/filtered', self.on_fusion, 20)
-        self.get_logger().info(f'Evaluating EKF against truth: {self.out}')
+        self.get_logger().info(f'Evaluating EKF against truth ({self.truth_reference}): {self.out}')
 
     def on_truth(self, msg):
         t = stamp_ns(msg)
@@ -70,7 +89,10 @@ class FusionEvaluator(Node):
             self.truth.clear()
             self.filtered.clear()
             self.truth_origin = self.fusion_origin = None
-        self.truth.append((t, get_pose(msg)))
+        pose = get_pose(msg)    # Gym pose = CoG
+        if self.truth_reference == 'rear_axle':
+            pose = rear_axle_pose(pose)
+        self.truth.append((t, pose))
         self.match()
 
     def on_fusion(self, msg):
@@ -123,7 +145,7 @@ class FusionEvaluator(Node):
         import statistics
         a = sorted(self.pos_errors)
         p95 = a[min(len(a)-1, math.ceil(.95*len(a))-1)]
-        print('\n=== FUSION EVALUATION ===')
+        print(f'\n=== FUSION EVALUATION === (truth at {self.truth_reference})')
         print(f'Samples:            {len(a)}')
         print(f'Mean position error:{statistics.mean(a):.3f} m')
         print(f'RMSE position:      {math.sqrt(statistics.mean(x*x for x in a)):.3f} m')
