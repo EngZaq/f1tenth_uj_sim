@@ -8,7 +8,7 @@
 #   H  -> the *_config vectors below
 #   R  -> the covariance INSIDE each sensor message
 #         (VESC + IMU: sim_vesc_imu.py, rf2o: cov_relay.py / config/cov_relay_rf2o.yaml)
-#   Q  -> process_noise_covariance below (template defaults, a RATE: P += Q*dt)
+#   Q  -> process_noise_covariance below (template defaults except vx=0.05; a RATE: P += Q*dt)
 #   P0 -> initial_estimate_covariance: not set -> template default 1e-9 (car starts still)
 
 ekf_filter_node:
@@ -29,6 +29,13 @@ ekf_filter_node:
     transform_time_offset: 0.0
     transform_timeout: 0.0
 
+    # ---------------- rejection gates: DISABLED on purpose ----------------
+    # No *_twist_rejection_threshold lines -> robot_localization default (no gating).
+    # In simulation tests a 3-sigma gate locked out good VESC/gyro data for up to 2 s
+    # after fast transients (small Q -> small S -> long rejection streaks), doubling
+    # the error. Proven F1TENTH stacks (ForzaETH) also run this velocity-only EKF
+    # without gates. Revisit only once R and Q are measured on the real car.
+
     # ---------------- sensor 1: VESC wheel speed -> vx ----------------
     odom0: /sim/vesc/wheel_odom
     odom0_config: [false, false, false,
@@ -39,7 +46,6 @@ ekf_filter_node:
     odom0_differential: false
     odom0_relative: false
     odom0_queue_size: 10
-    odom0_twist_rejection_threshold: 3.0     # gate: reject if > 3 sigma
 
     # ---------------- sensor 2: IMU gyro -> vyaw ----------------
     imu0: /sim/imu/data_raw
@@ -52,7 +58,6 @@ ekf_filter_node:
     imu0_relative: false
     imu0_queue_size: 20
     imu0_remove_gravitational_acceleration: false
-    imu0_twist_rejection_threshold: 3.0      # gate (angular velocity part)
 
     # ---------------- sensor 3: rf2o (via cov_relay) -> vx, vyaw ----------------
     odom1: /fusion/rf2o/odom_cov
@@ -64,19 +69,23 @@ ekf_filter_node:
     odom1_differential: false
     odom1_relative: false
     odom1_queue_size: 10
-    odom1_twist_rejection_threshold: 3.0     # gate: catches rf2o jumps
 
-    # ---------------- Q: process noise (template defaults) ----------------
+    # ---------------- Q: process noise ----------------
     # Diagonal: x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az
-    #           0.05 0.05 0.06 0.03 0.03 0.06 | 0.025 0.025 0.04 | 0.01 0.01 0.02 | 0.01 0.01 0.015
-    # Tune ONLY vx (index 6) and vyaw (index 11) after R is fixed.
+    #           0.05 0.05 0.06 0.03 0.03 0.06 | 0.05  0.025 0.04 | 0.01 0.01 0.02 | 0.01 0.01 0.015
+    # Template defaults except vx (index 6) = 0.05. Tune ONLY vx and vyaw (index 11).
+    # Why (NIS check in simulation, gates off, three sensors):
+    #   vx:   Q_vx 0.5 (ForzaETH value) gave VESC mean NIS 0.13 (expected 1): P_vx grew
+    #         0.5*0.02 = 0.01 between VESC samples, ~85 % of S. Q_vx 0.05 together with
+    #         the true VESC R (0.0009) gave mean NIS 0.62; RMSE unchanged.
+    #   vyaw: 0.02 (template) gave IMU mean NIS ~1.0 -> kept.
     process_noise_covariance: [0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,   0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
-                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025, 0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+                               0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.05,  0.0,   0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.025, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.04, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
                                0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,   0.0,   0.0,  0.01, 0.0,  0.0,  0.0,  0.0,  0.0,
