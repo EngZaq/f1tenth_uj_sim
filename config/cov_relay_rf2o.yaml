@@ -1,12 +1,14 @@
-# R for rf2o (simulation). Starting guesses — replace with measured values:
-#   R = (k * sigma)^2, k = 1.5-2, sigma from comparing rf2o with the other sensors.
-# rf2o shares scans with SLAM, so keep it less trusted than VESC / gyro.
+# R for rf2o (simulation), measured: R = (1.5 x robust std)^2, robust std = 1.4826 x MAD
+# of rf2o minus ground truth (matched at the rf2o header stamp), one sim lap, 248 messages.
+# Robust std ignores the spikes on purpose - those are handled by the EKF's rf2o gate
+# (odom1_twist_rejection_threshold in fusion_ekf_moatasem.yaml). Use together with that gate.
+# Real car: re-measure with the same method; these values come from simulated scans.
 cov_relay:
   ros__parameters:
     input_topic: /fusion/rf2o/odom
     output_topic: /fusion/rf2o/odom_cov
-    var_vx: 0.01        # sigma 0.1 m/s
-    var_vyaw: 0.0025    # sigma 0.05 rad/s
+    var_vx: 0.00296     # robust std 0.0363 m/s (was 0.01 guess)
+    var_vyaw: 0.00324   # robust std 0.0380 rad/s (was 0.0025 guess)
     var_vy: 1.0         # not fused
     var_unused: 1.0
     pose_var: 1000000.0

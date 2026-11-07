@@ -38,12 +38,13 @@ ekf_filter_node:
     smooth_lagged_data: true
     history_length: 0.5          # s; covers the worst rf2o delay seen (~270 ms)
 
-    # ---------------- rejection gates: DISABLED on purpose ----------------
-    # No *_twist_rejection_threshold lines -> robot_localization default (no gating).
+    # ---------------- rejection gates: VESC + IMU ungated, rf2o gated ----------------
+    # VESC / IMU: no *_twist_rejection_threshold -> robot_localization default (no gating).
     # In simulation tests a 3-sigma gate locked out good VESC/gyro data for up to 2 s
     # after fast transients (small Q -> small S -> long rejection streaks), doubling
     # the error. Proven F1TENTH stacks (ForzaETH) also run this velocity-only EKF
     # without gates. Revisit only once R and Q are measured on the real car.
+    # rf2o: gated at 3.7 sigma (see odom1 below) - the one sensor with real outliers.
 
     # ---------------- sensor 1: VESC wheel speed -> vx ----------------
     odom0: /sim/vesc/wheel_odom
@@ -78,6 +79,13 @@ ekf_filter_node:
     odom1_differential: false
     odom1_relative: false
     odom1_queue_size: 10
+    # Mahalanobis gate, rf2o only: 3.7 sigma = 99.9 % for its 2 fused values (vx, vyaw).
+    # rf2o fails in bursts (reads 0.5-0.9 m/s too slow for ~1 s at launch; isolated
+    # 1-3 message drops mid-lap). Sim 2x2 test (5 runs each, with the data-based R in
+    # cov_relay_rf2o.yaml): 0 false rejections out of 66, 88 % of spikes (> 5 robust
+    # std) rejected, longest streak = the launch (~1 s, all true failures; VESC/IMU stay
+    # ungated so the EKF keeps tracking). Accuracy unchanged within run-to-run spread.
+    odom1_twist_rejection_threshold: 3.7
 
     # ---------------- Q: process noise ----------------
     # Diagonal: x y z roll pitch yaw vx vy vz vroll vpitch vyaw ax ay az
