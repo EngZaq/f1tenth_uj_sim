@@ -139,6 +139,7 @@ class Mission:
 
 DEFAULT_EKF_CONFIG = 'config/fusion_ekf.yaml'
 DEFAULT_SENSOR_CONFIG = 'config/fusion_sim_sensors_unbiased.yaml'
+DEFAULT_SLAM_CONFIG = 'config/slam_sim.yaml'
 RF2O_CONFIG = 'config/rf2o_fusion.yaml'
 RF2O_RELAY_CONFIG = 'config/cov_relay_rf2o.yaml'
 
@@ -153,13 +154,14 @@ def mapping_configs(args):
     ekf = config_path(getattr(args,'ekf_config',None) or DEFAULT_EKF_CONFIG)
     sensors = config_path(getattr(args,'sensor_config',None) or DEFAULT_SENSOR_CONFIG)
     rf2o = bool(getattr(args,'with_rf2o',False))
-    return {'ekf_config':ekf,'sensor_config':sensors,'with_rf2o':rf2o,
+    slam = config_path(getattr(args,'slam_config',None) or DEFAULT_SLAM_CONFIG)
+    return {'ekf_config':ekf,'sensor_config':sensors,'slam_config':slam,'with_rf2o':rf2o,
             'rf2o_config':config_path(RF2O_CONFIG) if rf2o else None,
             'rf2o_relay_config':config_path(RF2O_RELAY_CONFIG) if rf2o else None}
 
 
 def check_mapping_configs(cfg):
-    for key in ('ekf_config','sensor_config','rf2o_config','rf2o_relay_config'):
+    for key in ('ekf_config','sensor_config','slam_config','rf2o_config','rf2o_relay_config'):
         if cfg[key] is not None and not cfg[key].is_file():
             raise RuntimeError(f'{key} not found: {cfg[key]}')
     has_odom1 = re.search(r'^\s*odom1\s*:',cfg['ekf_config'].read_text(),re.MULTILINE) is not None
@@ -205,7 +207,10 @@ def run_mission(ctx, args):
                           '-r','__node:=rf2o_laser_odometry'])
         ctx.start('cov_relay',['python3','-u',ROOT/'tools/fusion/cov_relay.py',
                                '--ros-args','--params-file',cfg['rf2o_relay_config']])
-    ctx.start('slam',['ros2','launch',MISSION/'mission_slam.launch.py'])
+    slam_launch = ['ros2','launch',MISSION/'mission_slam.launch.py']
+    if cfg['slam_config'] != config_path(DEFAULT_SLAM_CONFIG):
+        slam_launch.append(f"slam_config:={cfg['slam_config']}")
+    ctx.start('slam',slam_launch)
     def map_available():
         try:
             result = ctx.command(['ros2','topic','echo','--once','/mission/slam_map',
@@ -298,6 +303,8 @@ def main():
                         help='robot_localization EKF parameter file (default: team baseline)')
     parser.add_argument('--sensor-config',default=DEFAULT_SENSOR_CONFIG,
                         help='sim_vesc_imu parameter file (default: team baseline)')
+    parser.add_argument('--slam-config',default=DEFAULT_SLAM_CONFIG,
+                        help='slam_toolbox parameter file (default: team baseline, loop closing off)')
     parser.add_argument('--with-rf2o',action='store_true',
                         help=f'Also run rf2o ({RF2O_CONFIG}) + cov_relay ({RF2O_RELAY_CONFIG}) on '
                              '/fusion/scan; the EKF config must fuse odom1')
