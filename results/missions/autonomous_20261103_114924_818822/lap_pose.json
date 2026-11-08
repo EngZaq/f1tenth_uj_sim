@@ -1,0 +1,19 @@
+{
+  "finish_x": -0.8199278316729873,
+  "finish_y": -0.177608281037023,
+  "finish_yaw": 0.2867376352825485,
+  "frame_id": "slam_map",
+  "distance_odom_m": 34.272,
+  "estimated_lap_length_m": 34.272,
+  "duration_s": 228.12,
+  "return_distance_odom_m": 0.848,
+  "return_yaw_error_deg": 15.2,
+  "observed_corridor": {
+    "closed": true,
+    "known_free_cells": 73481,
+    "safe_cells": 40582,
+    "largest_interior_area_m2": 60.08937679080294,
+    "clearance_m": 0.3
+  },
+  "source": "latest SLAM TF after mapping settled; no oracle"
+}
