@@ -11,6 +11,7 @@ All tests ran in the F1TENTH Gym simulation, ROS 2 Humble. The simulator truth w
 | rf2o laser odometry | **Not used**: no gain with AMCL or for mapping, and it costs ~42–46 % of a CPU core. Kept as an option. |
 | slam_toolbox loop closing | **Off** (team default). On, it accepts a false closure near the start (1.2–1.7 m, 12–24°) and bends the map. |
 | SLAM correction audit | Run `tools/validation/mapping_correction_audit.py` with **`--max-gap-s 2.0`** |
+| Localizer (Test 4) | **Nav2 AMCL + EKF C**, AMCL `sigma_hit 0.05`, `z_rand 0.1` (`config/fusion_amcl_moatasem_A3.yaml`); the F1TENTH particle filter is not used (less accurate, 1 core of CPU, 4/5 guard stops in closed loop) |
 
 ## Issues for the team
 
@@ -48,6 +49,11 @@ All tests ran in the F1TENTH Gym simulation, ROS 2 Humble. The simulator truth w
 | `config/fusion_sim_sensors_mapping_mine.yaml` | EXPERIMENT RECORD | calibrated noise, measured R | Test 2 (C, CR), Tests 3 / 3b |
 | `config/slam_sim_loop_closing.yaml` | EXPERIMENT RECORD | `slam_sim.yaml` + `do_loop_closing: true` | Test 3 |
 | `config/slam_sim_loop_closing_tight.yaml` | EXPERIMENT RECORD | loop closing on + tight search/response thresholds | Test 3b |
+| `config/fusion_amcl_moatasem_A3.yaml` | ACTIVE | tuned AMCL: team values with `sigma_hit 0.05`, `z_rand 0.1` | Test 4 |
+| `config/fusion_amcl_moatasem_A1.yaml`, `config/fusion_amcl_moatasem_A2.yaml` | EXPERIMENT RECORD | AMCL laser-model variants (`sigma_hit 0.05` / `z_rand 0.1` alone) | Test 4 |
+| `config/particle_filter_moatasem.yaml` | EXPERIMENT RECORD | F1TENTH particle filter parameters (package values, `range_method rm`) | Test 4 |
+| `tools/localization/pf_shadow.launch.py` | EXPERIMENT RECORD | particle filter + EKF C launch (needs `~/Data/pf_ws`) | Test 4 |
+| `tools/localization/pf_map_odom_adapter.py` | EXPERIMENT RECORD | particle filter map->laser -> `slam_map -> fusion_odom` only; covariance re-layout; scan QoS relay | Test 4 |
 | `results/missions/autonomous_20261103_114924_818822/` (map, route, lap_pose) | ACTIVE | my no-loop SLAM map (wall RMS 0.033 m) and route. It is the default map of `amcl_shadow.launch.py` and the closed-loop route. | AMCL shadow, closed loop |
 
 ## Tests and results
@@ -64,6 +70,7 @@ Summaries and plots are in `docs/moatasem_results/<test>/`.
 | Test 2: mapping T / C / CR (3 runs each, loop off) | `mapping/` | No difference beyond the spread (C vs T wall RMS +0.033 m, p = 0.097); map quality follows SLAM drift at the lap end (r = 0.94), not EKF drift; rf2o gives no reliable gain at ~46 % of a core |
 | Test 3: loop closing ON, default (C) | `mapping_loop/` | One false closure per run (1.56–1.72 m / ~24°); wall RMS 0.477 m vs 0.100 m with loop off |
 | Test 3b: loop closing ON, tight (C) | `mapping_loop_tight/` | Still a false closure every run (1.23–1.26 m / 12–20°); wall RMS 0.326 ± 0.209 m |
+| Test 4: localizer check — AMCL laser model (A0–A3, shadow, 3 runs each) and F1TENTH particle filter vs tuned AMCL (shadow 3 runs, closed loop 5 runs each) | `test4_localizer/` | AMCL configs equal in true error (RMSE 0.040–0.046 m), all report σ 3–4.6× too large; A3 (σhit 0.05, z_rand 0.1) closest → tuned. Particle filter: RMSE 0.138 m, 55 heading jumps > 2°/lap, 100 % + 12 % CPU; closed loop 1/5 runs finished (4 guard stops) vs 5/5 for AMCL A3 → keep AMCL |
 
 How to run a mapping mission with these options (defaults = the team baseline):
 

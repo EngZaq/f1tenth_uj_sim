@@ -1,0 +1,48 @@
+# TEST 4 (Part 2): F1TENTH / MIT particle filter (github.com/f1tenth/particle_filter, branch humble-devel,
+# commit 672ea43) on the saved SLAM map, launched by tools/localization/pf_shadow.launch.py.
+#
+# Values = the package's recommended F1TENTH parameters (its config/localize.yaml, identical to the MIT
+# deprecated/localize.launch), with ONLY these changes:
+#   scan_topic      /scan  -> /pf/scan   (= /fusion/scan relayed 1:1 by pf_map_odom_adapter.py; the PF
+#                                          subscribes RELIABLE, /fusion/scan is BEST_EFFORT, so it needs a relay)
+#   odometry_topic  /odom  -> /odometry/filtered   (Moatasem EKF "C"; never /ego_racecar/odom)
+#   range_method    rmgpu  -> rm         (rmgpu = ray marching on CUDA; this PC has no NVIDIA GPU. rm = the SAME
+#                                          ray-marching algorithm on the CPU. NOT cddt (the README's CPU default):
+#                                          RangeLibc's CDDT segfaults for particles outside the map grid, which the
+#                                          package's fixed 0.5 m seed spread produces at our start pose, 0.8 m from
+#                                          the map edge (reproduced offline). rm and glt bounds-check; glt is ~8x
+#                                          faster on CPU (2.8 vs 21.8 ms per update) but a discretized lookup table.
+#                                          rangelib_variant 2 kept.)
+# Note: sigma_hit is in MAP PIXELS (the sensor-model table is built in pixels). With the 0.025 m map,
+# 8.0 px = 0.20 m (on the MIT 0.05 m maps it was 0.40 m). max_range 10 m = 400 px.
+particle_filter:
+  ros__parameters:
+    # topic names
+    scan_topic: '/pf/scan'
+    odometry_topic: '/odometry/filtered'
+    # range data downsampling
+    angle_step: 18
+    max_particles: 4000
+    squash_factor: 2.2
+    # visualization
+    viz: 1
+    max_viz_particles: 60
+    # ray marching method
+    range_method: 'rm'
+    theta_discretization: 112
+    # range data filtering
+    max_range: 10
+    fine_timing: 0
+    publish_odom: 1
+    # sensor model constants
+    z_short: 0.01
+    z_max: 0.07
+    z_rand: 0.12
+    z_hit: 0.75
+    sigma_hit: 8.0
+    # motion model dispersion constants
+    motion_dispersion_x: 0.05
+    motion_dispersion_y: 0.025
+    motion_dispersion_theta: 0.25
+    # sensor model variant, variant 2 good for rmgpu, 3 doesn't work for rmgpu
+    rangelib_variant: 2
