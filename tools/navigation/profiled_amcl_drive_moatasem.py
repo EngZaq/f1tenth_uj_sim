@@ -11,6 +11,17 @@ whose defaults reproduce the team behaviour except where noted:
     (it still requires 0 < across and 0 < along < major). Reason: on the new_track map AMCL
     REPORTS along-track sigma up to 0.19 m (median 0.12 m) while its real error is ~0.04 m
     (shadow tests), so the team bounds stop the car for the wrong reason.
+  * scale_jump_limits_with_speed (default false = unchanged): Test 6 option. When true, the
+    estimated-pose step limit (0.2 m per tick) and the AMCL jump limit (max_amcl_jump_m) each get
+    the expected travel added: measured speed x elapsed time. Nothing else changes.
+  * Test 7 speed parameters (every default = the previous behaviour):
+      guard_decel_mps2 (0.7)          braking the swept-collision guard assumes (stopping tube length)
+      lookahead_min_m / lookahead_max_m (0.25 / 0.60) clamp of lookahead_base_m + lookahead_speed_gain_s*v
+      cte_hold_speed_gain_s (0.0)     CTE hold = max(max_path_cte_m, gain*|measured speed|); the CTE speed
+                                      reduction uses the same limit
+      ramp_accel_mps2 / ramp_decel_mps2 (0.5 / 0.8) command ramp (was hard-coded in racing_policy defaults)
+      max_tf_age_s (0.45)             accepted age of the slam_map->fusion_base TF
+      scan_buffer_len (8)             scans kept for the guard's scan-to-odometry matching
   Steering, route following, swept-collision guard, start check and lap logic are unchanged.
 
 Uses AMCL/EKF map-frame pose, a full speed-profile route and forward predicted
@@ -86,6 +97,15 @@ class ProfiledAMCLDrive(Node):
             'odom_topic': '/odometry/filtered',
             'uncertainty_slowdown_start_m': 0.08,
             'max_allowed_speed_mps': 0.8,
+            'scale_jump_limits_with_speed': False,
+            'guard_decel_mps2': 0.7,
+            'lookahead_min_m': 0.25,
+            'lookahead_max_m': 0.60,
+            'cte_hold_speed_gain_s': 0.0,
+            'ramp_accel_mps2': 0.5,
+            'ramp_decel_mps2': 0.8,
+            'max_tf_age_s': 0.45,
+            'scan_buffer_len': 8,
         }
         for key, value in defaults.items():
             self.declare_parameter(key, value)
@@ -118,9 +138,20 @@ class ProfiledAMCLDrive(Node):
             raise ValueError('Unsupported simulator drive topic')
         self.odom_topic = str(p('odom_topic'))
         self.slowdown_start = float(p('uncertainty_slowdown_start_m'))
+        self.scale_jumps = bool(p('scale_jump_limits_with_speed'))
+        self.guard_decel = float(p('guard_decel_mps2'))
+        self.aim_min, self.aim_max = float(p('lookahead_min_m')), float(p('lookahead_max_m'))
+        self.cte_gain = float(p('cte_hold_speed_gain_s'))
+        self.ramp_accel, self.ramp_decel = float(p('ramp_accel_mps2')), float(p('ramp_decel_mps2'))
+        self.max_tf_age = float(p('max_tf_age_s'))
+        if not (0.3 <= self.guard_decel <= 9.0 and 0.1 <= self.aim_min <= self.aim_max <= 3.0 and
+                0 <= self.cte_gain <= 0.2 and 0.1 <= self.ramp_accel <= 9.0 and 0.1 <= self.ramp_decel <= 9.0 and
+                0.2 <= self.max_tf_age <= 1.0 and 4 <= int(p('scan_buffer_len')) <= 64):
+            raise ValueError('Invalid Test 7 speed parameters')
+        self.last_step_mono = None
         max_allowed = float(p('max_allowed_speed_mps'))
-        if not 0.8 <= max_allowed <= 2.0:
-            raise ValueError('max_allowed_speed_mps must be in [0.8, 2.0] (simulation only)')
+        if not 0.8 <= max_allowed <= 5.0:
+            raise ValueError('max_allowed_speed_mps must be in [0.8, 5.0] (simulation only)')
         if not 0.05 < self.speed_limit <= max_allowed:
             raise ValueError(f'Simulation-only speed cap must be in (0.05, {max_allowed}]m/s')
         if not 0.04 <= self.margin <= 0.2:
@@ -142,7 +173,7 @@ class ProfiledAMCLDrive(Node):
         self.scan = None
         self.scan_stamp = None
         self.scan_seen = None
-        self.scans = deque(maxlen=8)
+        self.scans = deque(maxlen=int(self.get_parameter('scan_buffer_len').value))
         self.odom_seen = None
         self.measured_speed = 0.
         self.measured_yaw_rate = 0.
@@ -209,7 +240,8 @@ class ProfiledAMCLDrive(Node):
             return
         if self.last_amcl_position and self.started:
             last_t, old_x, old_y = self.last_amcl_position
-            if 0 < t - last_t < 0.6 and math.hypot(x-old_x, y-old_y) > self.jump_limit:
+            limit = self.jump_limit + (abs(self.measured_speed)*(t-last_t) if self.scale_jumps else 0.)
+            if 0 < t - last_t < 0.6 and math.hypot(x-old_x, y-old_y) > limit:
                 self.hold('AMCL pose jump')
         self.last_amcl_position = (t, x, y)
         self.pose = msg.pose
@@ -356,8 +388,8 @@ class ProfiledAMCLDrive(Node):
                     try:
                         tf = self.tf_buffer.lookup_transform('slam_map', 'fusion_base', Time())
                         tf_age = age(stamp_s(tf.header.stamp))
-                        if not (-.35 <= tf_age <= .45):
-                            raise ValueError('stale map->base TF')
+                        if not (-.35 <= tf_age <= self.max_tf_age):
+                            raise ValueError(f'stale map->base TF ({tf_age:.2f} s)')
                         x = tf.transform.translation.x
                         y = tf.transform.translation.y
                         yaw = yaw_of(tf.transform.rotation)
@@ -370,14 +402,15 @@ class ProfiledAMCLDrive(Node):
                                 raise ValueError('outside scan-seeded start region')
                             if abs(normalized_angle(yaw-self.start[2])) > self.start_yaw_tolerance:
                                 raise ValueError('start heading disagreement')
-                        if cte > self.cte_limit:
-                            raise ValueError(f'estimated CTE {cte:.3f}m exceeds {self.cte_limit:.3f}m')
+                        cte_limit = max(self.cte_limit, self.cte_gain*abs(self.measured_speed))
+                        if cte > cte_limit:
+                            raise ValueError(f'estimated CTE {cte:.3f}m exceeds {cte_limit:.3f}m')
                         confidence_cap=uncertainty_speed_cap(self.speed_limit,along_std,
                                                              slowdown_start=self.slowdown_start,
                                                              pause_limit=self.along_std_limit)
                         route_cap = tracking_speed_cap(
                             min(self.speed_limit,self.route.speed_at(index),confidence_cap),
-                            cte,self.cte_limit)
+                            cte,cte_limit)
                         # Compensate scan age through local odometry, then roll
                         # out the actual body-frame steering command. Global
                         # map/AMCL translation error cancels from this geometry.
@@ -399,15 +432,15 @@ class ProfiledAMCLDrive(Node):
                             'measured_speed':self.measured_speed,'previous_speed':self.last_output_speed,
                             'proposals':[]}
                         def evaluate(proposal):
-                            lookahead=tracking_lookahead(proposal,self.aim_base,self.aim_gain)
+                            lookahead=max(self.aim_min,min(self.aim_max,self.aim_base+self.aim_gain*proposal))
                             steering=self.route.aim(x,y,yaw,index,lookahead,self.max_steer)
                             guard_velocity=max(self.measured_speed,self.last_output_speed,proposal)
-                            stopping_distance=stopping_horizon(guard_velocity,reaction)
+                            stopping_distance=stopping_horizon(guard_velocity,reaction,self.guard_decel)
                             blocked,clearance,hits=command_swept_collision(
                                 scan.ranges,scan.angle_min,scan.angle_increment,
                                 scan.range_min,scan.range_max,steering,guard_velocity,
                                 initial_steering=initial_steer,scan_to_body=scan_to_body,
-                                reaction=reaction,margin=self.margin)
+                                reaction=reaction,margin=self.margin,deceleration=self.guard_decel)
                             self.guard_snapshot['proposals'].append(dict(
                                 speed=proposal,steering=steering,guard_velocity=guard_velocity,
                                 gap=clearance,blocked=blocked,horizon=stopping_distance))
@@ -419,10 +452,14 @@ class ProfiledAMCLDrive(Node):
                             self.progress += route_progress_delta(self.index,index,self.route.n)
                         if self.last_xy is not None:
                             step = math.hypot(x-self.last_xy[0], y-self.last_xy[1])
-                            if step > .2:
+                            step_limit = .2
+                            if self.scale_jumps and self.last_step_mono is not None:
+                                step_limit += abs(self.measured_speed)*(mono-self.last_step_mono)
+                            if step > step_limit:
                                 raise ValueError('estimated pose discontinuity')
                             self.travel += step
                         self.last_xy = (x, y)
+                        self.last_step_mono = mono
                         self.index = index
                         self.started = True
                         if (self.progress >= self.route.n and
@@ -434,7 +471,8 @@ class ProfiledAMCLDrive(Node):
                             if self.auto_laps > 0 and self.laps >= self.auto_laps:
                                 self.hold(f'completed {self.auto_laps} estimated laps')
                         if not self.latch:
-                            speed = ramp_velocity(self.last_output_speed, plan, dt)
+                            speed = ramp_velocity(self.last_output_speed, plan, dt,
+                                                  accel=self.ramp_accel, decel=self.ramp_decel)
                             state, reason = 'DRIVE', 'OK'
                     except (TransformException, ValueError) as exc:
                         issue = str(exc)

@@ -21,6 +21,15 @@ Arguments:
     steer_bias_deg:=0.0  steer_noise_deg:=0.0               (vesc only: servo / linkage play)
     ekf:=config/fusion_ekf_moatasem.yaml                   (EKF parameters for ekf2, two sensors)
     ekf_rf2o:=config/fusion_ekf_moatasem_rf2o.yaml         (EKF parameters for ekf, three sensors)
+    scan_min_period_s:=0.1                                 (vesc / ekf2 relay spacing: 0.1 = original ~8.4 Hz,
+                                                            0.0 = every /scan, 30 Hz)
+    tf_topic:=/tf  tf_static_topic:=/tf_static             (ekf2 only: topics the EKF and AMCL use for TF. Set to
+                                                            /fusion/tf and /fusion/tf_static to keep the estimation
+                                                            tree off the simulator's ~1450 msg/s /tf; the launch then
+                                                            also publishes fusion_base -> fusion_laser there. The
+                                                            relay still publishes it on /tf_static as well.)
+    amcl_pose_topic:=/amcl_pose  amcl_tf_broadcast:=true    (Test 7 shadow runs: AMCL publishes its pose elsewhere and
+                                                            no map->odom TF, while another node owns map->odom)
 
 TF ownership (exactly one publisher per edge):
     slam_map    -> fusion_odom  : AMCL
@@ -29,6 +38,7 @@ TF ownership (exactly one publisher per edge):
 AMCL's initial-pose topic is remapped to /fusion/initialpose. The global /initialpose
 teleports the Gym car and must never be used for the localization hypothesis.
 """
+import sys
 from pathlib import Path
 
 from launch import LaunchDescription
@@ -37,8 +47,11 @@ from launch.conditions import IfCondition, LaunchConfigurationEquals
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tools'))
+from sim_geometry import FUSION_LASER  # noqa: E402  same values as fusion_scan_relay.py
 
 
 def generate_launch_description():
@@ -63,13 +76,28 @@ def generate_launch_description():
         DeclareLaunchArgument('steer_noise_deg', default_value='0.0'),
         DeclareLaunchArgument('ekf', default_value=str(ROOT / 'config/fusion_ekf_moatasem.yaml')),
         DeclareLaunchArgument('ekf_rf2o', default_value=str(ROOT / 'config/fusion_ekf_moatasem_rf2o.yaml')),
+        DeclareLaunchArgument('scan_min_period_s', default_value='0.1'),
+        DeclareLaunchArgument('tf_topic', default_value='/tf'),
+        DeclareLaunchArgument('tf_static_topic', default_value='/tf_static'),
+        DeclareLaunchArgument('amcl_pose_topic', default_value='/amcl_pose'),
+        DeclareLaunchArgument('amcl_tf_broadcast', default_value='true'),
 
         # ---------------- localization: map + AMCL ----------------
         Node(package='nav2_map_server', executable='map_server', name='fusion_map_server',
              output='screen', parameters=[params, {'yaml_filename': map_yaml}]),
         Node(package='nav2_amcl', executable='amcl', name='amcl', output='screen',
-             parameters=[params],
-             remappings=[('initialpose', '/fusion/initialpose')]),
+             parameters=[params, {'tf_broadcast': ParameterValue(LaunchConfiguration('amcl_tf_broadcast'), value_type=bool)}],
+             remappings=[('initialpose', '/fusion/initialpose'),
+                         ('amcl_pose', LaunchConfiguration('amcl_pose_topic')),
+                         ('/tf', LaunchConfiguration('tf_topic')),
+                         ('/tf_static', LaunchConfiguration('tf_static_topic'))]),
+        # fusion_base -> fusion_laser on a separate static TF topic (only when tf_static_topic is changed)
+        Node(package='tf2_ros', executable='static_transform_publisher', name='fusion_laser_static_tf',
+             arguments=['--x', str(FUSION_LASER[0]), '--y', str(FUSION_LASER[1]), '--z', '0',
+                        '--yaw', str(FUSION_LASER[2]),
+                        '--frame-id', 'fusion_base', '--child-frame-id', 'fusion_laser'],
+             remappings=[('/tf_static', LaunchConfiguration('tf_static_topic'))],
+             condition=IfCondition(PythonExpression(["'", LaunchConfiguration('tf_static_topic'), "' != '/tf_static'"]))),
         Node(package='nav2_lifecycle_manager', executable='lifecycle_manager',
              name='fusion_localization_lifecycle_manager', output='screen',
              parameters=[{'use_sim_time': False, 'autostart': True,
@@ -89,12 +117,15 @@ def generate_launch_description():
             output='screen', condition=own_sensors),
         ExecuteProcess(
             name='fusion_scan_relay',
-            cmd=['python3', '-u', str(ROOT / 'tools/localization/fusion_scan_relay.py')],
+            cmd=['python3', '-u', str(ROOT / 'tools/localization/fusion_scan_relay.py'),
+                 '--ros-args', '-p', ['min_period_s:=', LaunchConfiguration('scan_min_period_s')]],
             output='screen', condition=own_sensors),
 
         # ---------------- odometry source: EKF with VESC + IMU only ----------------
         Node(package='robot_localization', executable='ekf_node', name='ekf_filter_node',
-             parameters=[ekf_yaml], output='screen', condition=ekf2),
+             parameters=[ekf_yaml], output='screen', condition=ekf2,
+             remappings=[('/tf', LaunchConfiguration('tf_topic')),
+                         ('/tf_static', LaunchConfiguration('tf_static_topic'))]),
 
         # ---------------- odometry source A: raw VESC odometry ----------------
         ExecuteProcess(
